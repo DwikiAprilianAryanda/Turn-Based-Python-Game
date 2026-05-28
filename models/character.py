@@ -51,3 +51,13 @@ class Character(ABC):
     def use_special_skill(self, target: 'Character'):
         """Gunakan skill khusus yang mengonsumsi mana. Implementasi ada di class turunan."""
         pass
+
+    def heal(self, amount: int):
+        """Memulihkan HP tanpa melebihi batas maksimal."""
+        self.__current_hp = min(self._max_hp, self.__current_hp + amount)
+        print(f"[{self.name}] dipulihkan sebesar {amount} HP! (HP: {self.__current_hp}/{self._max_hp})")
+
+    def restore_mana(self, amount: int):
+        """Memulihkan Mana tanpa melebihi batas maksimal."""
+        self.__current_mana = min(self._max_mana, self.__current_mana + amount)
+        print(f"[{self.name}] memulihkan {amount} Mana! (Mana: {self.__current_mana}/{self._max_mana})")
