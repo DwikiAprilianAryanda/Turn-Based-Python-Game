@@ -49,21 +49,83 @@ class MainMenuView(arcade.View):
         self.manager.add(anchor_layout)
 
     def on_start_click(self, event):
-        """Menggunakan Factory Pattern saat tombol mulai diklik"""
+        """Pindah ke layar pemilihan karakter saat tombol mulai diklik"""
         self.manager.disable() # Matikan UI Menu sebelum pindah layar
         
-        # Menerapkan Factory Pattern untuk inisialisasi
-        p1 = CharacterFactory.create_character("Emperor", "Qin Shi Huang")
-        p2 = CharacterFactory.create_character("Gladiator", "Spartacus")
-        
-        battle_view = BattleView(p1, p2)
-        self.window.show_view(battle_view)
+        # Pindah ke Character Selection
+        selection_view = CharacterSelectionView()
+        self.window.show_view(selection_view)
 
     def on_quit_click(self, event):
         arcade.exit()
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
+
+# ==========================================
+# LAYAR PEMILIHAN KARAKTER (BARU)
+# ==========================================
+class CharacterSelectionView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+
+        self.v_box = arcade.gui.UIBoxLayout(space_between=20)
+
+        # Judul Layar
+        title_label = arcade.gui.UILabel(
+            text="PILIH KARAKTER ANDA",
+            text_color=arcade.color.WHITE,
+            font_size=24,
+            bold=True
+        )
+
+        # Tombol Pilihan Karakter
+        btn_emperor = arcade.gui.UIFlatButton(text="Kaisar (HP & Defense Tinggi)", width=300)
+        btn_gladiator = arcade.gui.UIFlatButton(text="Gladiator (Attack Tinggi)", width=300)
+
+        # Event Listener
+        btn_emperor.on_click = self.on_emperor_click
+        btn_gladiator.on_click = self.on_gladiator_click
+
+        self.v_box.add(title_label)
+        self.v_box.add(btn_emperor)
+        self.v_box.add(btn_gladiator)
+
+        anchor_layout = arcade.gui.UIAnchorLayout()
+        anchor_layout.add(
+            child=self.v_box,
+            anchor_x="center",
+            anchor_y="center"
+        )
+        self.manager.add(anchor_layout)
+
+    def on_emperor_click(self, event):
+        # Jika memilih Emperor, musuhnya otomatis Gladiator
+        self.start_battle("Emperor", "Qin Shi Huang", "Gladiator", "Spartacus (Musuh)")
+
+    def on_gladiator_click(self, event):
+        # Jika memilih Gladiator, musuhnya otomatis Emperor
+        self.start_battle("Gladiator", "Spartacus", "Emperor", "Qin Shi Huang (Musuh)")
+
+    def start_battle(self, p1_type, p1_name, p2_type, p2_name):
+        self.manager.disable()
+        
+        # Di sinilah Factory Pattern bekerja sesuai pilihan pemain!
+        p1 = CharacterFactory.create_character(p1_type, p1_name)
+        p2 = CharacterFactory.create_character(p2_type, p2_name)
+        
+        battle_view = BattleView(p1, p2)
+        self.window.show_view(battle_view)
+
+    def on_show_view(self):
+        # Latar belakang biru gelap agar beda dengan Main Menu
+        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
 
     def on_draw(self):
         self.clear()
