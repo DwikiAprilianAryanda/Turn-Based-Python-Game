@@ -1,27 +1,26 @@
+# models/gladiator.py
 from models.character import Character
-from models.effects import PoisonEffect
 from engine.ai_strategy import AggressiveAI
+from models.effects import PoisonEffect
+from models.element import Element # Import ini
 
 class Gladiator(Character):
     def __init__(self, name: str):
-        # Gladiator dirancang agresif: Attack sangat tinggi, namun HP dan Defense lebih rendah
-        super().__init__(
-            name=name, 
-            max_hp=100, 
-            max_mana=40, 
-            base_attack=25, 
-            base_defense=4
-        )
+        # Tambahkan element=Element.AIR
+        super().__init__(name, max_hp=100, max_mana=30, base_attack=25, defense=5, element=Element.AIR)
         self.ai_strategy = AggressiveAI()
 
-    # Penerapan Polymorphism: Meng-override metode yang sama dengan logika yang berbeda
-    def use_special_skill(self, target: Character):
+    def use_special_skill(self, target):
         mana_cost = 15
-        print(f"\n[SKILL] {self.name} menggunakan teknik khusus: Tebasan Brutal!")
-        
         if self.consume_mana(mana_cost):
-            # Mekanik Unik: Serangan murni dengan pengganda damage dasar yang besar
-            skill_damage = self.base_attack * 2
-            print(f"Menghantam musuh dengan sekuat tenaga!")
-            target.take_damage(skill_damage)
+            print(f"{self.name} menggunakan Serangan Brutal!")
             target.add_effect(PoisonEffect(duration=3))
+            
+            # Terapkan elemen ke skill
+            multiplier = Element.get_multiplier(self.element, target.element)
+            raw_damage = (self.base_attack * 2) * multiplier
+            damage = max(0, int(raw_damage) - target.defense)
+            target.take_damage(damage)
+        else:
+            print(f"Mana tidak cukup! {self.name} hanya menyerang biasa.")
+            self.basic_attack(target)

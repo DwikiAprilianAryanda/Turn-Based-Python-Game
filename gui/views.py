@@ -127,10 +127,21 @@ class CharacterSelectionView(arcade.View):
     def start_battle(self, p1_type, p1_name, p2_type, p2_name):
         self.manager.disable()
         
-        # Di sinilah Factory Pattern bekerja sesuai pilihan pemain!
+        # 1. Factory Pattern membuat Karakter Polos
         p1 = CharacterFactory.create_character(p1_type, p1_name)
         p2 = CharacterFactory.create_character(p2_type, p2_name)
         
+        # 2. IMPLEMENTASI DECORATOR PATTERN (Membungkus Karakter)
+        from models.equipment import Weapon, Armor
+        
+        # Kita pakaikan Pedang Excalibur ke Player 1 (+20 Attack)
+        p1 = Weapon(p1, weapon_name="Pedang Excalibur", bonus_attack=20)
+        
+        # Kita pakaikan Zirah Baja ke Player 2 (+15 Defense)
+        # Ingat, semakin tinggi Defense, damage musuh (Attack * 2) saat Critical akan semakin berkurang
+        p2 = Armor(p2, armor_name="Zirah Baja", bonus_defense=15)
+        
+        # 3. Masukkan ke arena pertarungan
         battle_view = BattleView(p1, p2)
         self.window.show_view(battle_view)
 

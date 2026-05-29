@@ -1,13 +1,18 @@
 from abc import ABC, abstractmethod
+from models.element import Element
 
 class Character(ABC):
-    def __init__(self, name: str, max_hp: int, max_mana: int, base_attack: int, base_defense: int):
-        self.name = name
-        # Atribut statis (protected)
+    # Ubah baris def __init__ menjadi seperti ini:
+    def __init__(self, name: str, max_hp: int, max_mana: int, base_attack: int, defense: int, element: str = Element.NETRAL):
+        self.element = element
+        # Nama karakter otomatis menampilkan elemennya
+        self.name = f"{name} [{self.element}]" 
         self._max_hp = max_hp
+        self.__current_hp = max_hp
         self._max_mana = max_mana
+        self.__current_mana = max_mana
         self.base_attack = base_attack
-        self.base_defense = base_defense
+        self.defense = defense
         self.active_effects = []
         
         # Atribut dinamis (private) - Penerapan Encapsulation
@@ -25,10 +30,8 @@ class Character(ABC):
 
     # Fungsi untuk menerima serangan
     def take_damage(self, raw_damage: int):
-        # Kalkulasi sederhana: damage dikurangi defense (minimal 0)
-        actual_damage = max(0, raw_damage - self.base_defense)
-        
-        # Pastikan HP tidak turun di bawah 0
+        # PERBAIKAN 1: Gunakan self.defense, bukan self.base_defense
+        actual_damage = max(0, int(raw_damage) - self.defense)
         self.__current_hp = max(0, self.__current_hp - actual_damage)
         print(f"[{self.name}] menerima {actual_damage} damage! (Sisa HP: {self.__current_hp}/{self._max_hp})")
 
@@ -43,9 +46,20 @@ class Character(ABC):
             return False
 
     # Serangan dasar biasa (tanpa mana)
-    def basic_attack(self, target: 'Character'):
-        print(f"\n{self.name} melakukan serangan dasar ke {target.name}!")
-        target.take_damage(self.base_attack)
+    def basic_attack(self, target):
+        # Hitung pengali elemen
+        multiplier = Element.get_multiplier(self.element, target.element)
+        
+        # PERBAIKAN 2: Jangan kurangi defense di sini, biarkan take_damage yang mengurusnya!
+        raw_damage = self.base_attack * multiplier
+        
+        if multiplier > 1.0:
+            print(f"SUPER EFEKTIF! Damage x{multiplier}")
+        elif multiplier < 1.0:
+            print(f"Kurang efektif... Damage x{multiplier}")
+            
+        # Langsung lempar raw_damage ke target
+        target.take_damage(raw_damage)
 
     # Abstraction: Fungsi ini WAJIB di-override oleh class turunannya nanti
     @abstractmethod

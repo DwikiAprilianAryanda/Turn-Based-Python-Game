@@ -40,5 +40,17 @@
         "pemenang": "Spartacus",
         "kalah": "Qin Shi Huang (Musuh)",
         "sisa_hp_pemenang": 23
+    },
+    {
+        "waktu": "2026-05-29 09:20:04",
+        "pemenang": "Qin Shi Huang \n(+ Pedang Excalibur)",
+        "kalah": "Spartacus (Musuh) \n(+ Zirah Baja)",
+        "sisa_hp_pemenang": 50
+    },
+    {
+        "waktu": "2026-05-29 09:25:44",
+        "pemenang": "Qin Shi Huang [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "kalah": "Spartacus (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "sisa_hp_pemenang": 21
     }
 ]
