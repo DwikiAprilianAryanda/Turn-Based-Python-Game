@@ -52,5 +52,41 @@
         "pemenang": "Qin Shi Huang [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
         "kalah": "Spartacus (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
         "sisa_hp_pemenang": 21
+    },
+    {
+        "waktu": "2026-05-29 09:34:53",
+        "pemenang": "Spartacus (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "kalah": "Qin Shi Huang [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "sisa_hp_pemenang": 71
+    },
+    {
+        "waktu": "2026-05-29 09:38:11",
+        "pemenang": "Assassin [Daun \ud83c\udf43] \n(+ Pedang Excalibur)",
+        "kalah": "Gladiator (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "sisa_hp_pemenang": 28
+    },
+    {
+        "waktu": "2026-05-29 09:45:28",
+        "pemenang": "Emperor [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "kalah": "Mage (Musuh) [Api \ud83d\udd25] \n(+ Zirah Baja)",
+        "sisa_hp_pemenang": 54
+    },
+    {
+        "waktu": "2026-05-29 09:48:35",
+        "pemenang": "Gladiator (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "kalah": "Emperor [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "sisa_hp_pemenang": 85
+    },
+    {
+        "waktu": "2026-05-29 09:50:31",
+        "pemenang": "Valkyrie (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "kalah": "Emperor [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "sisa_hp_pemenang": 81
+    },
+    {
+        "waktu": "2026-05-29 09:55:26",
+        "pemenang": "Gladiator (Musuh) [Air \ud83d\udca7] \n(+ Zirah Baja)",
+        "kalah": "Emperor [Api \ud83d\udd25] \n(+ Pedang Excalibur)",
+        "sisa_hp_pemenang": 86
     }
 ]
