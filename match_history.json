@@ -22,5 +22,23 @@
         "pemenang": "Qin Shi Huang",
         "kalah": "Spartacus (Musuh)",
         "sisa_hp_pemenang": 60
+    },
+    {
+        "waktu": "2026-05-29 09:08:09",
+        "pemenang": "Qin Shi Huang",
+        "kalah": "Spartacus (Musuh)",
+        "sisa_hp_pemenang": 60
+    },
+    {
+        "waktu": "2026-05-29 09:09:54",
+        "pemenang": "Qin Shi Huang",
+        "kalah": "Spartacus (Musuh)",
+        "sisa_hp_pemenang": 35
+    },
+    {
+        "waktu": "2026-05-29 09:10:17",
+        "pemenang": "Spartacus",
+        "kalah": "Qin Shi Huang (Musuh)",
+        "sisa_hp_pemenang": 23
     }
 ]

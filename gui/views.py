@@ -209,6 +209,7 @@ class BattleView(arcade.View):
 
         self.is_player_turn = True
         self.enemy_delay_timer = 0.0
+        self.shake_timer = 0.0
 
         self.character_sprites = arcade.SpriteList()
 
@@ -261,13 +262,21 @@ class BattleView(arcade.View):
 
         if self.current_turn == self.player1:
             command = BasicAttackCommand()
-            command.execute(self.player1, self.player2)
+            status = command.execute(self.player1, self.player2)
             
-            # Tampilkan info hanya di sisi kiri, kosongkan sisi kanan
-            self.p1_log = "Melancarkan Basic Attack!"
             self.p2_log = ""
             
-            self.spawn_floating_text("BAM!", 600, 420, arcade.color.RED)
+            if status == "DODGE":
+                self.p1_log = "Serangan Meleset!"
+                self.spawn_floating_text("MISS!", 600, 420, arcade.color.GRAY)
+            elif status == "CRIT":
+                self.p1_log = "CRITICAL HIT!"
+                self.spawn_floating_text("CRITICAL!", 600, 420, arcade.color.GOLD)
+                self.shake_timer = 0.3  # Picu getaran selama 0.3 detik
+            else:
+                self.p1_log = "Melancarkan Basic Attack!"
+                self.spawn_floating_text("BAM!", 600, 420, arcade.color.RED)
+                
             self.check_game_state()
 
     def on_skill_click(self, event):
@@ -281,6 +290,7 @@ class BattleView(arcade.View):
             self.p2_log = ""
             
             self.spawn_floating_text("SKILL!", 600, 420, arcade.color.ORANGE)
+            self.shake_timer = 0.5  # Skill memicu getaran lebih lama
             self.check_game_state()
 
     def on_item_click(self, event):
@@ -320,28 +330,60 @@ class BattleView(arcade.View):
         self.enemy_delay_timer = 1.5
 
     def on_update(self, delta_time: float):
+        # Update Floating Text
         for f_text in self.floating_texts:
             f_text.update()
         self.floating_texts = [f for f in self.floating_texts if not f.is_dead()]
 
+        # Timer Giliran AI
         if not self.is_player_turn and self.enemy_delay_timer > 0:
             self.enemy_delay_timer -= delta_time
             if self.enemy_delay_timer <= 0:
                 self.enemy_turn()
 
+        # LOGIKA GETARAN LAYAR (SCREEN SHAKE)
+        if self.shake_timer > 0:
+            self.shake_timer -= delta_time
+            import random
+            offset_x = random.randint(-8, 8)
+            offset_y = random.randint(-8, 8)
+            
+            # Posisi berguncang
+            self.p1_sprite.center_x = 200 + offset_x
+            self.p1_sprite.center_y = 320 + offset_y
+            self.p2_sprite.center_x = 600 + offset_x
+            self.p2_sprite.center_y = 320 + offset_y
+        else:
+            # Kunci kembali ke posisi awal agar tidak bergeser permanen
+            self.p1_sprite.center_x = 200
+            self.p1_sprite.center_y = 320
+            self.p2_sprite.center_x = 600
+            self.p2_sprite.center_y = 320
+
     def enemy_turn(self):
         if hasattr(self.player2, 'ai_strategy'):
             command, log_msg = self.player2.ai_strategy.decide_action(self.player2)
-            # Tampilkan aksi musuh di sisi kanan, kosongkan sisi kiri
-            self.p2_log = log_msg.capitalize()
         else:
             command = BasicAttackCommand()
-            self.p2_log = "Menyerang!"
+            log_msg = "Menyerang!"
             
+        status = command.execute(self.player2, self.player1)
         self.p1_log = ""
         
-        command.execute(self.player2, self.player1)
-        self.spawn_floating_text("BAM!", 200, 420, arcade.color.RED)
+        if status == "DODGE":
+            self.p2_log = "Serangan Meleset!"
+            self.spawn_floating_text("MISS!", 200, 420, arcade.color.GRAY)
+        elif status == "CRIT":
+            self.p2_log = "CRITICAL HIT!"
+            self.spawn_floating_text("CRITICAL!", 200, 420, arcade.color.GOLD)
+            self.shake_timer = 0.3
+        elif status == "SKILL":
+            self.p2_log = log_msg.capitalize()
+            self.spawn_floating_text("SKILL!", 200, 420, arcade.color.ORANGE)
+            self.shake_timer = 0.5
+        else:
+            self.p2_log = log_msg.capitalize()
+            self.spawn_floating_text("BAM!", 200, 420, arcade.color.RED)
 
         if self.player1.current_hp <= 0:
             self.manager.disable()
@@ -350,7 +392,6 @@ class BattleView(arcade.View):
             self.current_turn = self.player1
             self.is_player_turn = True 
             
-            # Jika ada efek yang mengenai pemain, tambahkan di log pemain
             effect_logs = self.player1.process_effects()
             if effect_logs:
                 self.p1_log = f"{effect_logs}\n\nGiliran Anda!"
@@ -392,7 +433,7 @@ class BattleView(arcade.View):
             f_text.draw()
             
         self.manager.draw()
-        
+
 # ==========================================
 # LAYAR RIWAYAT PERTANDINGAN (BARU)
 # ==========================================
