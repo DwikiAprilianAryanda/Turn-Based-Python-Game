@@ -2,10 +2,6 @@
 from models.character import Character
 
 class Equipment(Character):
-    """
-    Decorator Universal untuk Senjata dan Zirah.
-    Bisa menangani Buff (nilai positif) dan Debuff (nilai negatif) sekaligus.
-    """
     def __init__(self, character: Character, item_name: str, bonus_atk: int, bonus_def: int):
         self._character = character
         self.item_name = item_name
@@ -18,21 +14,17 @@ class Equipment(Character):
 
     @property
     def base_attack(self):
-        # Mencegah attack menjadi minus jika debuff terlalu besar
-        final_atk = self._character.base_attack + self._bonus_atk
-        return max(1, final_atk)
+        return max(1, self._character.base_attack + self._bonus_atk)
 
     @property
     def defense(self):
-        # Mencegah defense menjadi minus
-        final_def = self._character.defense + self._bonus_def
-        return max(0, final_def)
+        return max(0, self._character.defense + self._bonus_def)
 
-    # --- PENERUSAN STATUS HP ---
+    # --- JEMBATAN STATUS HP (LENGKAP) ---
     @property
     def current_hp(self):
         return self._character.current_hp
-        
+    
     @current_hp.setter
     def current_hp(self, value):
         self._character.current_hp = value
@@ -41,7 +33,7 @@ class Equipment(Character):
     def _max_hp(self):
         return self._character._max_hp
 
-    # --- PENERUSAN STATUS MANA & ELEMEN (YANG SEBELUMNYA KURANG) ---
+    # --- JEMBATAN STATUS MANA (LENGKAP) ---
     @property
     def current_mana(self):
         return self._character.current_mana
@@ -58,7 +50,10 @@ class Equipment(Character):
     def element(self):
         return self._character.element
 
-    # --- PENERUSAN FUNGSI WAJIB KE KARAKTER ASLI ---
+    # --- FUNGSI WAJIB LAINNYA ---
+    def heal(self, amount):
+        self._character.heal(amount)
+
     def take_damage(self, amount):
         return self._character.take_damage(amount)
         

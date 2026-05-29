@@ -660,69 +660,125 @@ class GameOverView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# LAYAR INVENTORY (BARU)
+# LAYAR INVENTORY (REDESAIN: GRID & DETAILS PANE)
 # ==========================================
 class InventoryView(arcade.View):
     def __init__(self):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=10)
-
-        self.v_box.add(arcade.gui.UILabel(text="🎒 INVENTORY EQUIPMENT 🎒", text_color=arcade.color.GOLD, font_size=24, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-
-        raw_inventory = SaveManager.get_inventory()
         
-        if not raw_inventory:
-            self.v_box.add(arcade.gui.UILabel(text="Inventory Anda kosong. Tarik Gacha dulu!", text_color=arcade.color.LIGHT_GRAY))
-        else:
-            # Hitung jumlah item kembar
-            item_counts = {}
-            for item in raw_inventory:
-                item_counts[item] = item_counts.get(item, 0) + 1
+        # Ambil data dari penyimpanan
+        raw_inventory = SaveManager.get_inventory()
+        self.item_counts = {}
+        for item in raw_inventory:
+            self.item_counts[item] = self.item_counts.get(item, 0) + 1
+            
+        # Tentukan item yang sedang dipilih pertama kali (jika ada)
+        self.selected_item = list(self.item_counts.keys())[0] if self.item_counts else None
+        
+        # Panggil fungsi perakit UI
+        self.build_ui()
 
+    def build_ui(self):
+        self.manager.clear()
+        
+        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=40)
+
+        # ========================================
+        # PANEL KIRI: GRID KOTAK ITEM
+        # ========================================
+        left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        left_panel.add(arcade.gui.UILabel(text="🎒 DAFTAR EQUIPMENT", text_color=arcade.color.GOLD, font_size=20, bold=True))
+        left_panel.add(arcade.gui.UILabel(text="", height=10))
+
+        if not self.item_counts:
+            # UBAH: Warna dari LIGHT_GRAY ke WHITE agar jelas
+            left_panel.add(arcade.gui.UILabel(text="Inventory Anda kosong.", text_color=arcade.color.WHITE, font_size=16, bold=True))
+        else:
             from engine.gacha_system import GachaSystem
             import os
             
-            # Membuat Scrollable Area jika item banyak (Opsional tapi rapi)
-            for item_name, count in item_counts.items():
+            items_per_row = 4
+            current_row = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+            
+            for i, (item_name, count) in enumerate(self.item_counts.items()):
+                if i % items_per_row == 0 and i != 0:
+                    left_panel.add(current_row)
+                    current_row = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+                
                 item_data = GachaSystem.ITEM_POOL.get(item_name)
-                if not item_data: continue
+                img_path = item_data.get("img", "") if item_data else ""
                 
-                # Baris horizontal untuk gambar & teks
-                h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
-                
-                # Memuat Gambar Item (Jika file tidak ada, lewati gambar)
-                img_path = item_data["img"]
                 if os.path.exists(img_path):
-                    texture = arcade.load_texture(img_path)
-                    tex_widget = arcade.gui.UITextureRectangle(texture=texture, width=40, height=40)
-                    h_box.add(tex_widget)
+                    tex = arcade.load_texture(img_path)
+                    btn = arcade.gui.UITextureButton(texture=tex, width=80, height=80)
+                else:
+                    btn_text = f"{item_name[:6]}..\nx{count}"
+                    btn = arcade.gui.UIFlatButton(text=btn_text, width=80, height=80)
                 
-                # Teks Detail
-                color = arcade.color.WHITE
-                if item_data["rarity"] == "Mythic": color = arcade.color.RED
-                elif item_data["rarity"] == "Legendary": color = arcade.color.GOLD
-                elif item_data["rarity"] == "Rare": color = arcade.color.LIGHT_BLUE
+                btn.on_click = self.make_select_action(item_name)
+                current_row.add(btn)
                 
-                detail_text = f"[{item_data['rarity']}] {item_name} (x{count})\nEfek: {item_data['desc']}"
-                text_lbl = arcade.gui.UILabel(text=detail_text, text_color=color, font_size=12, width=400, multiline=True)
-                
-                h_box.add(text_lbl)
-                self.v_box.add(h_box)
+            left_panel.add(current_row)
 
-        self.v_box.add(arcade.gui.UILabel(text="", height=20))
+        left_panel.add(arcade.gui.UILabel(text="", height=20))
         back_btn = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=250)
         back_btn.on_click = self.on_back_click
-        self.v_box.add(back_btn)
+        left_panel.add(back_btn)
+
+        # ========================================
+        # PANEL KANAN: DETAIL ITEM
+        # ========================================
+        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        
+        if self.selected_item:
+            item_data = GachaSystem.ITEM_POOL.get(self.selected_item)
+            if item_data:
+                img_path = item_data.get("img", "")
+                if os.path.exists(img_path):
+                    tex = arcade.load_texture(img_path)
+                    right_panel.add(arcade.gui.UITextureRectangle(texture=tex, width=200, height=200))
+                else:
+                    right_panel.add(arcade.gui.UISpace(width=200, height=200, color=arcade.color.DARK_GRAY))
+                
+                color = arcade.color.WHITE
+                rarity = item_data["rarity"]
+                if rarity == "Mythic": color = arcade.color.PURPLE
+                elif rarity == "Legendary": color = arcade.color.GOLD
+                elif rarity == "Rare": color = arcade.color.LIGHT_BLUE
+                
+                # UBAH: Font diperbesar, menggunakan WHITE untuk teks biasa, dan bold=True
+                right_panel.add(arcade.gui.UILabel(text=f"{self.selected_item}", text_color=color, font_size=28, bold=True))
+                right_panel.add(arcade.gui.UILabel(text=f"Rank: {rarity} | Dimiliki: {self.item_counts[self.selected_item]}x", text_color=arcade.color.WHITE, font_size=14, bold=True))
+                
+                right_panel.add(arcade.gui.UILabel(text="Atribut:", text_color=arcade.color.GOLD, font_size=18, bold=True))
+                right_panel.add(arcade.gui.UILabel(text=f"👉 {item_data['desc']}", text_color=arcade.color.LIGHT_GREEN, font_size=16, bold=True))
+                
+                right_panel.add(arcade.gui.UILabel(text="", height=10)) 
+                right_panel.add(arcade.gui.UILabel(text="Kisah Item:", text_color=arcade.color.GOLD, font_size=18, bold=True))
+                # UBAH: Dari GRAY (samar) menjadi WHITE (terang) dengan ukuran 14
+                right_panel.add(arcade.gui.UILabel(text=f'"{item_data["lore"]}"', text_color=arcade.color.WHITE, font_size=14, multiline=True, width=400))
+
+        main_layout.add(left_panel)
+        main_layout.add(arcade.gui.UISpace(width=50, height=10)) 
+        main_layout.add(right_panel)
 
         anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        anchor_layout.add(child=main_layout, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_layout)
+
+    def make_select_action(self, item_name):
+        def action(event):
+            # Update state item yang dipilih dan gambar ulang (refresh) UI-nya
+            self.selected_item = item_name
+            self.build_ui()
+        return action
 
     def on_back_click(self, event):
         self.manager.disable()
+        # Menggunakan lazy import agar tidak circular
+        from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
     def on_show_view(self):
@@ -960,18 +1016,21 @@ class BattleView(arcade.View):
     def on_draw(self):
         self.clear()
         self.character_sprites.draw()
+        
         p1_remaining = len(self.player_party) - self.p1_idx
         p2_remaining = len(self.enemy_party) - self.p2_idx
 
+        # UBAH: Font size indikator bertahan diperbesar dari 12 ke 14
         arcade.Text(
             f"Tim Anda: {p1_remaining}/{len(self.player_party)} Bertahan", 
-            x=self.p1_base_x, y=self.base_y + 210, color=arcade.color.YELLOW, font_size=12, bold=True, anchor_x="center"
+            x=self.p1_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
         ).draw()
         arcade.Text(
             f"Tim Musuh: {p2_remaining}/{len(self.enemy_party)} Bertahan", 
-            x=self.p2_base_x, y=self.base_y + 210, color=arcade.color.YELLOW, font_size=12, bold=True, anchor_x="center"
+            x=self.p2_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
         ).draw()
 
+        # Nama karakter
         arcade.Text(self.p1_active.name, x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         arcade.Text(self.p2_active.name, x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         
@@ -980,11 +1039,22 @@ class BattleView(arcade.View):
         self.p2_hp_bar.draw()
         self.p2_mana_bar.draw()
         
-        arcade.Text(self.p1_log, x=self.p1_base_x, y=self.base_y - 140, color=arcade.color.LIGHT_BLUE, font_size=16, anchor_x="center", anchor_y="top", multiline=True, width=350, align="center").draw()
-        arcade.Text(self.p2_log, x=self.p2_base_x, y=self.base_y - 140, color=arcade.color.LIGHT_RED_OCHRE, font_size=16, anchor_x="center", anchor_y="top", multiline=True, width=350, align="center").draw()
+        # UBAH LOG SERANGAN: Warna menjadi WHITE bersih, ditebalkan (bold=True), dan font_size naik ke 18
+        arcade.Text(
+            self.p1_log, x=self.p1_base_x, y=self.base_y - 140, 
+            color=arcade.color.WHITE, font_size=18, bold=True, 
+            anchor_x="center", anchor_y="top", multiline=True, width=380, align="center"
+        ).draw()
+        
+        arcade.Text(
+            self.p2_log, x=self.p2_base_x, y=self.base_y - 140, 
+            color=arcade.color.WHITE, font_size=18, bold=True, 
+            anchor_x="center", anchor_y="top", multiline=True, width=380, align="center"
+        ).draw()
         
         for f_text in self.floating_texts:
             f_text.draw()
+            
         self.manager.draw()
 
 # ==========================================
