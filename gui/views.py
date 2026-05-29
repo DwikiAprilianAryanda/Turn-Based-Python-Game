@@ -332,61 +332,181 @@ class DifficultySelectionView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 4. LAYAR PEMILIHAN KARAKTER (UPDATE SCALING)
+# 4. LAYAR PEMILIHAN KARAKTER (UPDATE: FITUR BATAL/UNDO)
 # ==========================================
 class CharacterSelectionView(arcade.View):
     def __init__(self, party_size, difficulty):
         super().__init__()
         self.party_size = party_size
         self.difficulty = difficulty
-        self.player_party = []
-
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=10)
-
-        self.title_label = arcade.gui.UILabel(
-            text=f"⚔️ PILIH KARAKTER ({self.difficulty}) (0/{self.party_size}) ⚔️",
-            text_color=arcade.color.GOLD, font_size=24, bold=True
-        )
-        self.v_box.add(self.title_label)
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
+        self.player_party = []
+        self.enemy_party = []
 
-        for char_type in self.available_characters:
-            btn = arcade.gui.UIFlatButton(text=f"Tambah {char_type}", width=350)
-            btn.on_click = self.create_character_action(char_type)
-            self.v_box.add(btn)
+        self.last_player_char = None
+        self.last_enemy_char = None
 
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=350)
+        self.build_ui()
+
+    def build_ui(self):
+        self.manager.clear()
+
+        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=40)
+
+        # ========================================
+        # PANEL KIRI: PEMAIN
+        # ========================================
+        left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        left_panel.add(arcade.gui.UILabel(text=f"TIM ANDA ({len(self.player_party)}/{self.party_size})", font_size=18, bold=True, text_color=arcade.color.LIGHT_BLUE))
+
+        p_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+        p_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+
+        for i, char in enumerate(self.available_characters):
+            btn = arcade.gui.UIFlatButton(text=char[:3].upper(), width=70, height=50)
+            btn.on_click = self.make_select_action(char, is_player=True)
+            if i % 2 == 0: p_col1.add(btn)
+            else: p_col2.add(btn)
+            
+        p_grid.add(p_col1)
+        p_grid.add(p_col2)
+        left_panel.add(p_grid)
+
+        left_panel.add(arcade.gui.UILabel(text="", height=10))
+        
+        # Area Gambar Portrait Pemain & Tombol Batal
+        if self.last_player_char:
+            left_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_BLUE))
+            left_panel.add(arcade.gui.UILabel(text=self.last_player_char, font_size=16, bold=True, text_color=arcade.color.WHITE))
+            
+            # FITUR BARU: Tombol Batal untuk Pemain
+            undo_p_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150)
+            undo_p_btn.on_click = self.on_undo_player
+            left_panel.add(undo_p_btn)
+        else:
+            left_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_GRAY))
+            left_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY, bold=True))
+
+
+        # ========================================
+        # PANEL TENGAH: KONTROL
+        # ========================================
+        center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        center_panel.add(arcade.gui.UILabel(text="VS", font_size=36, bold=True, text_color=arcade.color.CRIMSON))
+
+        rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM", width=150)
+        rand_btn.on_click = self.on_random
+        center_panel.add(rand_btn)
+
+        if len(self.player_party) == self.party_size and len(self.enemy_party) == self.party_size:
+            ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=150)
+            ready_btn.on_click = self.on_ready
+            center_panel.add(ready_btn)
+        else:
+            wait_btn = arcade.gui.UIFlatButton(text="Pilih Karakter...", width=150)
+            center_panel.add(wait_btn)
+
+        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=150)
         back_btn.on_click = self.on_back_click
-        self.v_box.add(back_btn)
+        center_panel.add(back_btn)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
 
-    def create_character_action(self, char_type):
+        # ========================================
+        # PANEL KANAN: MUSUH
+        # ========================================
+        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        right_panel.add(arcade.gui.UILabel(text=f"TIM LAWAN ({len(self.enemy_party)}/{self.party_size})", font_size=18, bold=True, text_color=arcade.color.CRIMSON))
+
+        e_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+        e_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        e_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+
+        for i, char in enumerate(self.available_characters):
+            btn = arcade.gui.UIFlatButton(text=char[:3].upper(), width=70, height=50)
+            btn.on_click = self.make_select_action(char, is_player=False)
+            if i % 2 == 0: e_col1.add(btn)
+            else: e_col2.add(btn)
+            
+        e_grid.add(e_col1)
+        e_grid.add(e_col2)
+        right_panel.add(e_grid)
+
+        right_panel.add(arcade.gui.UILabel(text="", height=10))
+        
+        # Area Gambar Portrait Musuh & Tombol Batal
+        if self.last_enemy_char:
+            right_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_RED))
+            right_panel.add(arcade.gui.UILabel(text=self.last_enemy_char, font_size=16, bold=True, text_color=arcade.color.WHITE))
+            
+            # FITUR BARU: Tombol Batal untuk Musuh
+            undo_e_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150)
+            undo_e_btn.on_click = self.on_undo_enemy
+            right_panel.add(undo_e_btn)
+        else:
+            right_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_GRAY))
+            right_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY, bold=True))
+
+
+        main_layout.add(left_panel)
+        main_layout.add(center_panel)
+        main_layout.add(right_panel)
+
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=main_layout, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    def make_select_action(self, char_name, is_player):
         def action(event):
-            self.player_party.append(char_type)
-            self.title_label.text = f"⚔️ PILIH KARAKTER ({self.difficulty}) ({len(self.player_party)}/{self.party_size}) ⚔️"
-            if len(self.player_party) == self.party_size:
-                enemy_party = [random.choice(self.available_characters) for _ in range(self.party_size)]
-                self.start_battle(self.player_party, enemy_party)
+            if is_player and len(self.player_party) < self.party_size:
+                self.player_party.append(char_name)
+                self.last_player_char = char_name
+            elif not is_player and len(self.enemy_party) < self.party_size:
+                self.enemy_party.append(char_name)
+                self.last_enemy_char = char_name
+                
+            self.build_ui() 
         return action
 
-    # TImpa fungsi ini di dalam CharacterSelectionView
-    def start_battle(self, player_party_types, enemy_party_types):
+    # --- FUNGSI BARU: UNDO PEMAIN ---
+    def on_undo_player(self, event):
+        if self.player_party:
+            self.player_party.pop() # Hapus karakter terakhir
+            # Update gambar portrait ke karakter sebelumnya (jika masih ada sisa)
+            self.last_player_char = self.player_party[-1] if self.player_party else None
+            self.build_ui()
+
+    # --- FUNGSI BARU: UNDO MUSUH ---
+    def on_undo_enemy(self, event):
+        if self.enemy_party:
+            self.enemy_party.pop() # Hapus karakter terakhir
+            # Update gambar portrait ke karakter sebelumnya (jika masih ada sisa)
+            self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
+            self.build_ui()
+
+    def on_random(self, event):
+        import random
+        while len(self.player_party) < self.party_size:
+            self.player_party.append(random.choice(self.available_characters))
+        while len(self.enemy_party) < self.party_size:
+            self.enemy_party.append(random.choice(self.available_characters))
+
+        self.last_player_char = self.player_party[-1]
+        self.last_enemy_char = self.enemy_party[-1]
+        self.build_ui()
+
+    def on_ready(self, event):
         self.manager.disable()
-        # Jangan langsung ke BattleView, lempar datanya ke Layar Equipment dulu!
-        eq_view = EquipmentSelectionView(player_party_types, enemy_party_types, self.difficulty)
-        self.window.show_view(eq_view)
+        from gui.views import EquipmentSelectionView
+        self.window.show_view(EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty))
 
     def on_back_click(self, event):
         self.manager.disable()
-        self.window.show_view(ModeSelectionView())
+        from gui.views import DifficultySelectionView
+        self.window.show_view(DifficultySelectionView(self.party_size))
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
