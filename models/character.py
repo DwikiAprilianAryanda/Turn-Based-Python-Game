@@ -5,8 +5,9 @@ class Character(ABC):
     # Ubah baris def __init__ menjadi seperti ini:
     def __init__(self, name: str, max_hp: int, max_mana: int, base_attack: int, defense: int, element: str = Element.NETRAL):
         self.element = element
-        # Nama karakter otomatis menampilkan elemennya
+        self.base_name = name # Simpan nama asli tanpa elemen/level
         self.name = f"{name} [{self.element}]" 
+        
         self._max_hp = max_hp
         self.__current_hp = max_hp
         self._max_mana = max_mana
@@ -15,9 +16,25 @@ class Character(ABC):
         self.defense = defense
         self.active_effects = []
         
-        # Atribut dinamis (private) - Penerapan Encapsulation
-        self.__current_hp = max_hp
-        self.__current_mana = max_mana
+        self.level = 1
+        self.exp = 0
+
+    def apply_scaling(self, level: int, stat_multiplier: float = 1.0):
+        """Skala dinamis: Atribut naik 10% per level."""
+        self.level = level
+        
+        # Rumus: 1.0 (Level 1), 1.1 (Level 2), 1.2 (Level 3), dst.
+        level_scale = 1.0 + ((level - 1) * 0.1)
+        
+        # Terapkan pengali level dikali pengali kesulitan musuh
+        self._max_hp = int(self._max_hp * level_scale * stat_multiplier)
+        self.__current_hp = self._max_hp
+        
+        self.base_attack = int(self.base_attack * level_scale * stat_multiplier)
+        self.defense = int(self.defense * level_scale * stat_multiplier)
+        
+        # Update UI Teks Nama agar pemain bisa melihat Levelnya di layar
+        self.name = f"Lv.{self.level} {self.base_name} [{self.element}]"
 
     # Menggunakan decorator @property sebagai Getter (Read-only access)
     @property

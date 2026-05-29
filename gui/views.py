@@ -8,6 +8,7 @@ from engine.commands import BasicAttackCommand, SpecialSkillCommand, UseItemComm
 from models.item import HealthPotion
 from engine.factory import CharacterFactory 
 from engine.history_manager import HistoryManager
+from engine.save_manager import SaveManager, DIFFICULTY_SETTINGS
 
 # ==========================================
 # 1. LAYAR MAIN MENU
@@ -17,16 +18,11 @@ class MainMenuView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-
         self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
         title_label = arcade.gui.UILabel(
-            text="EPIC TURN-BASED ARENA",
-            text_color=arcade.color.GOLD,
-            font_size=36,
-            bold=True
+            text="EPIC TURN-BASED ARENA", text_color=arcade.color.GOLD, font_size=36, bold=True
         )
-        
         start_button = arcade.gui.UIFlatButton(text="Mulai Permainan", width=200)
         history_button = arcade.gui.UIFlatButton(text="Lihat Riwayat", width=200) 
         quit_button = arcade.gui.UIFlatButton(text="Keluar", width=200)
@@ -46,14 +42,11 @@ class MainMenuView(arcade.View):
 
     def on_start_click(self, event):
         self.manager.disable()
-        # LANGSUNG panggil kelasnya tanpa import!
-        mode_view = ModeSelectionView() 
-        self.window.show_view(mode_view)
+        self.window.show_view(ModeSelectionView())
 
     def on_history_click(self, event):
         self.manager.disable()
-        history_view = HistoryView()
-        self.window.show_view(history_view)
+        self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
         arcade.exit()
@@ -66,7 +59,7 @@ class MainMenuView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# LAYAR PILIH MODE PERTANDINGAN
+# 2. LAYAR PILIH MODE PERTANDINGAN
 # ==========================================
 class ModeSelectionView(arcade.View):
     def __init__(self):
@@ -75,20 +68,16 @@ class ModeSelectionView(arcade.View):
         self.manager.enable()
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        title = arcade.gui.UILabel(
-            text="PILIH MODE PERTANDINGAN", 
-            text_color=arcade.color.GOLD, font_size=24, bold=True
-        )
-        self.v_box.add(title)
+        self.v_box.add(arcade.gui.UILabel(text="PILIH MODE PERTANDINGAN", text_color=arcade.color.GOLD, font_size=24, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
         btn_1v1 = arcade.gui.UIFlatButton(text="Duel (1 vs 1)", width=250)
         btn_2v2 = arcade.gui.UIFlatButton(text="Tag Team (2 vs 2)", width=250)
         btn_3v3 = arcade.gui.UIFlatButton(text="Party (3 vs 3)", width=250)
 
-        btn_1v1.on_click = lambda e: self.select_mode(1)
-        btn_2v2.on_click = lambda e: self.select_mode(2)
-        btn_3v3.on_click = lambda e: self.select_mode(3)
+        btn_1v1.on_click = self.on_click_1v1
+        btn_2v2.on_click = self.on_click_2v2
+        btn_3v3.on_click = self.on_click_3v3
 
         self.v_box.add(btn_1v1)
         self.v_box.add(btn_2v2)
@@ -103,15 +92,17 @@ class ModeSelectionView(arcade.View):
         anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_layout)
 
+    def on_click_1v1(self, event): self.select_mode(1)
+    def on_click_2v2(self, event): self.select_mode(2)
+    def on_click_3v3(self, event): self.select_mode(3)
+
     def select_mode(self, party_size):
         self.manager.disable()
-        selection_view = CharacterSelectionView(party_size)
-        self.window.show_view(selection_view)
+        self.window.show_view(DifficultySelectionView(party_size))
 
     def on_back_click(self, event):
         self.manager.disable()
-        menu_view = MainMenuView()
-        self.window.show_view(menu_view)
+        self.window.show_view(MainMenuView())
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
@@ -121,12 +112,68 @@ class ModeSelectionView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# LAYAR PEMILIHAN KARAKTER
+# 3. LAYAR PILIH KESULITAN (BARU)
 # ==========================================
-class CharacterSelectionView(arcade.View):
-    def __init__(self, party_size=1):
+class DifficultySelectionView(arcade.View):
+    def __init__(self, party_size):
         super().__init__()
         self.party_size = party_size
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
+
+        self.v_box.add(arcade.gui.UILabel(text="PILIH TINGKAT KESULITAN", text_color=arcade.color.GOLD, font_size=24, bold=True))
+        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP yang didapat!", text_color=arcade.color.LIGHT_GRAY, font_size=12))
+        self.v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        btn_easy = arcade.gui.UIFlatButton(text="🟢 EASY (Musuh Mentok Lv.10 | EXP x1.0)", width=350)
+        btn_med = arcade.gui.UIFlatButton(text="🟡 MEDIUM (Musuh Mentok Lv.30 | EXP x1.5)", width=350)
+        btn_hard = arcade.gui.UIFlatButton(text="🔴 HARD (Musuh Mentok Lv.100 | EXP x2.5)", width=350)
+
+        btn_easy.on_click = self.on_easy
+        btn_med.on_click = self.on_medium
+        btn_hard.on_click = self.on_hard
+
+        self.v_box.add(btn_easy)
+        self.v_box.add(btn_med)
+        self.v_box.add(btn_hard)
+
+        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=350)
+        back_btn.on_click = self.on_back_click
+        self.v_box.add(arcade.gui.UILabel(text="", height=10))
+        self.v_box.add(back_btn)
+
+        anchor_layout = arcade.gui.UIAnchorLayout()
+        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor_layout)
+
+    def on_easy(self, event): self.select_diff("EASY")
+    def on_medium(self, event): self.select_diff("MEDIUM")
+    def on_hard(self, event): self.select_diff("HARD")
+
+    def select_diff(self, diff):
+        self.manager.disable()
+        self.window.show_view(CharacterSelectionView(self.party_size, diff))
+
+    def on_back_click(self, event):
+        self.manager.disable()
+        self.window.show_view(ModeSelectionView())
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
+
+# ==========================================
+# 4. LAYAR PEMILIHAN KARAKTER (UPDATE SCALING)
+# ==========================================
+class CharacterSelectionView(arcade.View):
+    def __init__(self, party_size, difficulty):
+        super().__init__()
+        self.party_size = party_size
+        self.difficulty = difficulty
         self.player_party = []
 
         self.manager = arcade.gui.UIManager()
@@ -134,7 +181,7 @@ class CharacterSelectionView(arcade.View):
         self.v_box = arcade.gui.UIBoxLayout(space_between=10)
 
         self.title_label = arcade.gui.UILabel(
-            text=f"⚔️ PILIH KARAKTER ANDA (0/{self.party_size}) ⚔️",
+            text=f"⚔️ PILIH KARAKTER ({self.difficulty}) (0/{self.party_size}) ⚔️",
             text_color=arcade.color.GOLD, font_size=24, bold=True
         )
         self.v_box.add(self.title_label)
@@ -143,12 +190,12 @@ class CharacterSelectionView(arcade.View):
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
 
         for char_type in self.available_characters:
-            btn = arcade.gui.UIFlatButton(text=f"Tambah {char_type}", width=250)
+            btn = arcade.gui.UIFlatButton(text=f"Tambah {char_type}", width=350)
             btn.on_click = self.create_character_action(char_type)
             self.v_box.add(btn)
 
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=250)
+        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=350)
         back_btn.on_click = self.on_back_click
         self.v_box.add(back_btn)
 
@@ -159,7 +206,7 @@ class CharacterSelectionView(arcade.View):
     def create_character_action(self, char_type):
         def action(event):
             self.player_party.append(char_type)
-            self.title_label.text = f"⚔️ PILIH KARAKTER ANDA ({len(self.player_party)}/{self.party_size}) ⚔️"
+            self.title_label.text = f"⚔️ PILIH KARAKTER ({self.difficulty}) ({len(self.player_party)}/{self.party_size}) ⚔️"
             if len(self.player_party) == self.party_size:
                 enemy_party = [random.choice(self.available_characters) for _ in range(self.party_size)]
                 self.start_battle(self.player_party, enemy_party)
@@ -169,26 +216,45 @@ class CharacterSelectionView(arcade.View):
         self.manager.disable()
         from models.equipment import Weapon, Armor
         
+        # 1. SETUP PEMAIN (Ambil Level dari Save Data)
         player_party = []
+        player_levels = []
         for i, char_type in enumerate(player_party_types):
             char = CharacterFactory.create_character(char_type, f"{char_type} (P{i+1})")
+            
+            # Terapkan Level
+            saved_data = SaveManager.get_character_data(char_type)
+            level = saved_data["level"]
+            char.apply_scaling(level=level, stat_multiplier=1.0)
+            player_levels.append(level)
+            
             char = Weapon(char, weapon_name="Pedang Excalibur", bonus_attack=20)
             player_party.append(char)
             
+        # 2. SETUP MUSUH (Berdasarkan Rata-Rata Level Pemain & Batasan Kesulitan)
+        avg_level = max(1, sum(player_levels) // len(player_levels))
+        diff_settings = DIFFICULTY_SETTINGS[self.difficulty]
+        
+        # Batasan Opsi A: Musuh tidak bisa melebihi level cap di mode ini
+        enemy_level = min(avg_level, diff_settings["enemy_cap"])
+        
         enemy_party = []
         for i, char_type in enumerate(enemy_party_types):
             char = CharacterFactory.create_character(char_type, f"{char_type} (Musuh {i+1})")
+            
+            # Terapkan Level & Pengali Atribut Kesulitan (Stat Mult)
+            char.apply_scaling(level=enemy_level, stat_multiplier=diff_settings["stat_mult"])
+            
             char = Armor(char, armor_name="Zirah Baja", bonus_defense=15)
             enemy_party.append(char)
             
-        # Panggil BattleView langsung, HAPUS import lokalnya!
-        battle_view = BattleView(player_party, enemy_party)
+        # Bawa data difficulty & tipe karakter asli untuk perhitungan EXP
+        battle_view = BattleView(player_party, enemy_party, self.difficulty, player_party_types)
         self.window.show_view(battle_view)
 
     def on_back_click(self, event):
         self.manager.disable()
-        mode_view = ModeSelectionView()
-        self.window.show_view(mode_view)
+        self.window.show_view(ModeSelectionView())
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
@@ -199,29 +265,51 @@ class CharacterSelectionView(arcade.View):
 
 
 # ==========================================
-# 2. LAYAR GAME OVER
+# 5. LAYAR GAME OVER (UPDATE HADIAH EXP)
 # ==========================================
 class GameOverView(arcade.View):
-    def __init__(self, winner: Character, loser: Character):
+    def __init__(self, winner_name: str, loser_name: str, winner_hp: int, is_player_win: bool, difficulty: str, player_types: list):
         super().__init__()
-        self.winner = winner
-        self.loser = loser
         
-        HistoryManager.save_match(self.winner.name, self.loser.name, self.winner.current_hp)
+        HistoryManager.save_match(winner_name, loser_name, winner_hp)
         
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
-        winner_label = arcade.gui.UILabel(
-            text=f"🏆 {self.winner.name} MENANG! 🏆",
-            text_color=arcade.color.LIGHT_GREEN, font_size=30, bold=True
-        )
+        # Cek apakah pemain menang, lalu bagikan EXP
+        exp_text = ""
+        if is_player_win:
+            title_text = "🏆 TIM ANDA MENANG! 🏆"
+            title_color = arcade.color.LIGHT_GREEN
+            
+            party_size = len(player_types)
+            base_exp = 50 if party_size == 1 else (75 if party_size == 2 else 100)
+            multiplier = DIFFICULTY_SETTINGS[difficulty]["exp_mult"]
+            total_exp = int(base_exp * multiplier)
+            
+            exp_text = f"Memperoleh +{total_exp} EXP! ({difficulty} Mode)\n\n"
+            
+            for char_type in player_types:
+                new_lvl, leveled_up = SaveManager.add_exp(char_type, total_exp)
+                if leveled_up:
+                    exp_text += f"⭐ {char_type} NAIK KE LEVEL {new_lvl}! ⭐\n"
+                else:
+                    exp_text += f"✔️ {char_type} (Lv.{new_lvl})\n"
+        else:
+            title_text = "💀 TIM ANDA KALAH 💀"
+            title_color = arcade.color.CRIMSON
+            exp_text = "Game Over.\nTidak ada EXP yang diperoleh karena kalah."
+
+        # RENDER UI
+        winner_label = arcade.gui.UILabel(text=title_text, text_color=title_color, font_size=30, bold=True)
+        exp_label = arcade.gui.UILabel(text=exp_text, text_color=arcade.color.YELLOW, font_size=16, multiline=True, width=500, align="center")
         
-        menu_button = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=200)
+        menu_button = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=250)
         menu_button.on_click = self.on_menu_click
 
         self.v_box.add(winner_label)
+        self.v_box.add(exp_label)
         self.v_box.add(menu_button)
 
         anchor_layout = arcade.gui.UIAnchorLayout()
@@ -230,8 +318,7 @@ class GameOverView(arcade.View):
 
     def on_menu_click(self, event):
         self.manager.disable()
-        menu_view = MainMenuView()
-        self.window.show_view(menu_view)
+        self.window.show_view(MainMenuView())
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.BLACK)
@@ -242,13 +329,16 @@ class GameOverView(arcade.View):
 
 
 # ==========================================
-# 3. LAYAR PERTEMPURAN
+# 6. LAYAR PERTEMPURAN (UPDATE PENERUSAN DATA)
 # ==========================================
 class BattleView(arcade.View):
-    def __init__(self, player_party: list, enemy_party: list):
+    def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list):
         super().__init__()
         self.player_party = player_party
         self.enemy_party = enemy_party
+        self.difficulty = difficulty
+        self.player_types = player_types # Disimpan untuk hadiah EXP
+        
         self.p1_idx = 0
         self.p2_idx = 0
         self.p1_active = self.player_party[self.p1_idx]
@@ -315,11 +405,13 @@ class BattleView(arcade.View):
         self.floating_texts.append(FloatingText(text, x, adjusted_y, color))
 
     def handle_death(self) -> bool:
+        # MUSUH MATI
         if self.p2_active.current_hp <= 0:
             self.p2_idx += 1
             if self.p2_idx >= len(self.enemy_party):
                 self.manager.disable()
-                self.window.show_view(GameOverView(self.p1_active, self.p2_active))
+                # PANGGIL GAME OVER (Pemain Menang = True)
+                self.window.show_view(GameOverView("Tim Pemain", "Tim Musuh", self.p1_active.current_hp, True, self.difficulty, self.player_types))
                 return True
             else:
                 self.p2_active = self.enemy_party[self.p2_idx]
@@ -329,11 +421,13 @@ class BattleView(arcade.View):
                 self.is_player_turn = True
                 return True
 
+        # PEMAIN MATI
         if self.p1_active.current_hp <= 0:
             self.p1_idx += 1
             if self.p1_idx >= len(self.player_party):
                 self.manager.disable()
-                self.window.show_view(GameOverView(self.p2_active, self.p1_active))
+                # PANGGIL GAME OVER (Pemain Menang = False)
+                self.window.show_view(GameOverView("Tim Musuh", "Tim Pemain", self.p2_active.current_hp, False, self.difficulty, self.player_types))
                 return True
             else:
                 self.p1_active = self.player_party[self.p1_idx]
@@ -490,7 +584,7 @@ class BattleView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# LAYAR RIWAYAT PERTANDINGAN
+# 7. LAYAR RIWAYAT PERTANDINGAN
 # ==========================================
 class HistoryView(arcade.View):
     def __init__(self):
@@ -500,8 +594,7 @@ class HistoryView(arcade.View):
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
         title_label = arcade.gui.UILabel(
-            text="📜 RIWAYAT PERTANDINGAN",
-            text_color=arcade.color.GOLD, font_size=24, bold=True
+            text="📜 RIWAYAT PERTANDINGAN", text_color=arcade.color.GOLD, font_size=24, bold=True
         )
         self.v_box.add(title_label)
 
@@ -528,8 +621,7 @@ class HistoryView(arcade.View):
 
     def on_back_click(self, event):
         self.manager.disable()
-        menu_view = MainMenuView()
-        self.window.show_view(menu_view)
+        self.window.show_view(MainMenuView())
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EIGHTEEN_PERCENT_GREY if hasattr(arcade.color, 'EIGHTEEN_PERCENT_GREY') else arcade.color.DARK_GRAY)

@@ -94,5 +94,29 @@
         "pemenang": "Valkyrie (Musuh 3) [Air \ud83d\udca7] \n(+ Zirah Baja)",
         "kalah": "Valkyrie (P3) [Air \ud83d\udca7] \n(+ Pedang Excalibur)",
         "sisa_hp_pemenang": 92
+    },
+    {
+        "waktu": "2026-05-29 10:55:51",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 97
+    },
+    {
+        "waktu": "2026-05-29 10:56:22",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 21
+    },
+    {
+        "waktu": "2026-05-29 10:56:45",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 93
+    },
+    {
+        "waktu": "2026-05-29 10:57:18",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 103
     }
 ]
