@@ -2,11 +2,11 @@
     "characters": {
         "Emperor": {
             "level": 5,
-            "exp": 75
+            "exp": 475
         },
         "Mage": {
-            "level": 3,
-            "exp": 225
+            "level": 4,
+            "exp": 125
         },
         "Gladiator": {
             "level": 2,
@@ -17,7 +17,7 @@
             "exp": 0
         }
     },
-    "gold": 8250,
+    "gold": 8550,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",

@@ -1,14 +1,8 @@
 # engine/factory.py
-from models.emperor import Emperor
-from models.gladiator import Gladiator
-from models.assassin import Assassin
-from models.mage import Mage
-from models.knight import Knight
-from models.valkyrie import Valkyrie
+# KITA UBAH IMPORT-NYA AGAR MENGAMBIL DARI SATU FILE YANG SUDAH KITA UPDATE
+from models.character import Emperor, Gladiator, Assassin, Mage, Knight, Valkyrie
 
 class CharacterFactory:
-    """Penerapan Factory Pattern untuk membuat karakter secara dinamis."""
-    
     @staticmethod
     def create_character(char_type: str, name: str):
         if char_type == "Emperor":
@@ -24,4 +18,4 @@ class CharacterFactory:
         elif char_type == "Valkyrie":
             return Valkyrie(name)
         else:
-            raise ValueError(f"Tipe karakter '{char_type}' tidak ditemukan!")
+            raise ValueError(f"Tipe karakter tidak dikenal: {char_type}")

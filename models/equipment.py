@@ -54,8 +54,12 @@ class Equipment(Character):
     def heal(self, amount):
         self._character.heal(amount)
 
-    def take_damage(self, amount):
-        return self._character.take_damage(amount)
+    def take_damage(self, amount, attacker=None):
+        return self._character.take_damage(amount, attacker)
+        
+    def __getattr__(self, name):
+        # Ini akan otomatis meneruskan fungsi ultimate, on_turn_start, dll ke karakter asli!
+        return getattr(self._character, name)
         
     def apply_scaling(self, level, stat_multiplier):
         self._character.apply_scaling(level, stat_multiplier)
@@ -65,3 +69,6 @@ class Equipment(Character):
 
     def use_special_skill(self, target):
         return self._character.use_special_skill(target)
+    
+    def use_ultimate(self, target, enemy_party=None, ally_party=None):
+        return self._character.use_ultimate(target, enemy_party, ally_party)
