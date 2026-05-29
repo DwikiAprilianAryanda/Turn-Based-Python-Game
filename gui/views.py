@@ -233,7 +233,7 @@ class ModeSelectionView(arcade.View):
         self.manager.enable()
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        self.v_box.add(arcade.gui.UILabel(text="PILIH MODE PERTANDINGAN", text_color=arcade.color.GOLD, font_size=24, bold=True))
+        self.v_box.add(arcade.gui.UILabel(text="PILIH MODE PERTANDINGAN", text_color=arcade.color.GOLD, font_size=28, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
         btn_1v1 = arcade.gui.UIFlatButton(text="Duel (1 vs 1)", width=250)
@@ -287,8 +287,8 @@ class DifficultySelectionView(arcade.View):
         self.manager.enable()
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        self.v_box.add(arcade.gui.UILabel(text="PILIH TINGKAT KESULITAN", text_color=arcade.color.GOLD, font_size=24, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP yang didapat!", text_color=arcade.color.LIGHT_GRAY, font_size=12))
+        self.v_box.add(arcade.gui.UILabel(text="PILIH TINGKAT KESULITAN", text_color=arcade.color.GOLD, font_size=28, bold=True))
+        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP yang didapat!", text_color=arcade.color.LIGHT_GRAY, font_size=16, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
         btn_easy = arcade.gui.UIFlatButton(text="🟢 EASY (Musuh Mentok Lv.10 | EXP x1.0)", width=350)
@@ -421,25 +421,26 @@ class EquipmentSelectionView(arcade.View):
         self.build_main_ui()
 
     def build_main_ui(self):
-        """Membuat tampilan awal pemilihan equipment karakter"""
-        self.manager.clear() # Bersihkan widget sebelumnya
+        self.manager.clear()
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        title = arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=24, bold=True)
+        # JUDUL: Perbesar dan buat sangat kontras
+        title = arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=28, bold=True)
         self.v_box.add(title)
-        self.v_box.add(arcade.gui.UILabel(text="Klik tombol di samping nama untuk membuka daftar equipment", text_color=arcade.color.LIGHT_GRAY, font_size=12))
+        
+        # SUB-JUDUL: Gunakan putih agar kontras
+        self.v_box.add(arcade.gui.UILabel(text="Klik tombol di samping nama untuk membuka daftar equipment", text_color=arcade.color.WHITE, font_size=14, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
-        # Buat Baris untuk setiap Karakter
+        # DAFTAR KARAKTER
         for i, char_type in enumerate(self.player_types):
             row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-            lbl = arcade.gui.UILabel(text=f"{char_type}", width=120, font_size=14, bold=True)
             
-            # Tombol menunjukkan item yang SEDANG dipakai
+            # LABEL NAMA KARAKTER: Putih, Tebal, dan lebih besar
+            lbl = arcade.gui.UILabel(text=f"{char_type}", width=150, font_size=16, bold=True, text_color=arcade.color.WHITE)
+            
             current_item = self.equipped_items[i]
-            btn = arcade.gui.UIFlatButton(text=current_item, width=300)
-            
-            # Saat diklik, buka jendela "Dropdown/Modal"
+            btn = arcade.gui.UIFlatButton(text=current_item, width=350, height=50)
             btn.on_click = self.make_open_picker_action(i)
             
             row.add(lbl)
