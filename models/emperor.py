@@ -1,4 +1,5 @@
 from models.character import Character
+from models.effects import PowerUpEffect
 
 class Emperor(Character):
     def __init__(self, name: str):
@@ -23,3 +24,4 @@ class Emperor(Character):
             skill_damage = self.base_attack + (self.base_defense * 2)
             print(f"Memusatkan energi pertahanan menjadi gelombang kejut sebesar {skill_damage}!")
             target.take_damage(skill_damage)
+            self.add_effect(PowerUpEffect(duration=2))

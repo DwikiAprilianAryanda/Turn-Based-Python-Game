@@ -1,4 +1,5 @@
 from models.character import Character
+from models.effects import PoisonEffect
 
 class Gladiator(Character):
     def __init__(self, name: str):
@@ -21,3 +22,4 @@ class Gladiator(Character):
             skill_damage = self.base_attack * 2
             print(f"Menghantam musuh dengan sekuat tenaga!")
             target.take_damage(skill_damage)
+            target.add_effect(PoisonEffect(duration=3))

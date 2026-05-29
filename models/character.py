@@ -8,6 +8,7 @@ class Character(ABC):
         self._max_mana = max_mana
         self.base_attack = base_attack
         self.base_defense = base_defense
+        self.active_effects = []
         
         # Atribut dinamis (private) - Penerapan Encapsulation
         self.__current_hp = max_hp
@@ -61,3 +62,24 @@ class Character(ABC):
         """Memulihkan Mana tanpa melebihi batas maksimal."""
         self.__current_mana = min(self._max_mana, self.__current_mana + amount)
         print(f"[{self.name}] memulihkan {amount} Mana! (Mana: {self.__current_mana}/{self._max_mana})")
+
+    def add_effect(self, effect):
+        """Menambahkan efek ke karakter"""
+        self.active_effects.append(effect)
+        effect.apply_initial_effect(self)
+
+    def process_effects(self) -> str:
+        """Memproses semua efek yang sedang aktif di awal giliran"""
+        log_msgs = []
+        for effect in self.active_effects[:]: # Salin list untuk iterasi yang aman
+            msg = effect.apply_turn_effect(self)
+            if msg:
+                log_msgs.append(msg)
+
+            # Hapus efek jika durasi sudah habis
+            if effect.duration <= 0:
+                effect.remove_effect(self)
+                self.active_effects.remove(effect)
+                log_msgs.append(f"Efek {effect.name} pada {self.name} telah pudar.")
+
+        return "\n".join(log_msgs) if log_msgs else ""

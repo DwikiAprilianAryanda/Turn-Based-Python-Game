@@ -247,22 +247,34 @@ class BattleView(arcade.View):
             self.check_game_state()
 
     def check_game_state(self):
-        """Memindahkan layar ke Game Over jika ada yang kalah"""
         if self.player2.current_hp <= 0:
             self.manager.disable()
             self.window.show_view(GameOverView(self.player1.name))
             return
 
+        # Pindah ke musuh
         self.current_turn = self.player2
+        
+        # PROSES EFEK STATUS MUSUH
+        effect_logs = self.player2.process_effects()
+        if effect_logs:
+            self.battle_log += f"\n{effect_logs}"
+
+        # Cek apakah musuh mati karena racun sebelum sempat menyerang
+        if self.player2.current_hp <= 0:
+            self.manager.disable()
+            self.window.show_view(GameOverView(self.player1.name))
+            return
+
         self.enemy_turn()
 
     def enemy_turn(self):
         if self.player2.current_mana >= 15:
             command = SpecialSkillCommand()
-            self.battle_log += f"\nMusuh membalas dengan Special Skill!"
+            self.battle_log += f"\nMusuh menggunakan Special Skill!"
         else:
             command = BasicAttackCommand()
-            self.battle_log += f"\nMusuh membalas dengan Basic Attack!"
+            self.battle_log += f"\nMusuh menggunakan Basic Attack!"
             
         command.execute(self.player2, self.player1)
 
@@ -270,7 +282,18 @@ class BattleView(arcade.View):
             self.manager.disable()
             self.window.show_view(GameOverView(self.player2.name))
         else:
+            # Kembali ke giliran Player 1
             self.current_turn = self.player1
+            
+            # PROSES EFEK STATUS PLAYER 1
+            effect_logs = self.player1.process_effects()
+            if effect_logs:
+                self.battle_log = f"{effect_logs}\n\nGiliran Anda!"
+                
+            # Cek apakah Player 1 mati karena racun
+            if self.player1.current_hp <= 0:
+                self.manager.disable()
+                self.window.show_view(GameOverView(self.player2.name))
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
