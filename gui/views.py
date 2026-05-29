@@ -996,7 +996,7 @@ class InventoryView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 6. LAYAR PERTEMPURAN (FINAL: PASIF & ULTIMATE)
+# 6. LAYAR PERTEMPURAN (FINAL: TAG TEAM & ULTIMATE)
 # ==========================================
 class BattleView(arcade.View):
     def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list):
@@ -1028,18 +1028,74 @@ class BattleView(arcade.View):
         self.p2_sprite = arcade.SpriteSolidColor(150, 220, color=arcade.color.ROYAL_BLUE)
         self.character_sprites.append(self.p2_sprite)
         self.floating_texts = []
-        self.update_layout() 
-
+        
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        
+        self.update_layout() 
+        self.build_ui() # Membangun tombol aksi & Roster pinggir layar
+        
+        self.p1_active.on_turn_start()
+        if self.p1_active.passive_logs:
+            self.p1_log += f"\n{self.p1_active.passive_logs}"
+
+    def build_ui(self):
+        """Membangun ulang seluruh tombol UI agar HP dan status tombol selalu update"""
+        self.manager.clear()
+        
+        # ==========================================
+        # 1. PANEL ROSTER PEMAIN (KIRI) - ALA NARUTO STORM
+        # ==========================================
+        left_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        for i, char in enumerate(self.player_party):
+            # Tentukan status karakter
+            if char.current_hp <= 0:
+                text = f"💀 {char.name[:6]}..\nDEAD"
+                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) # Tombol mati (tidak bisa diklik)
+            elif i == self.p1_idx:
+                text = f"▶️ {char.name[:6]}..\nAktif"
+                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) # Tombol aktif (tidak usah diklik)
+            else:
+                text = f"🔄 {char.name[:6]}..\nHP: {int(char.current_hp)}"
+                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60)
+                btn.on_click = self.make_swap_action(i) # Tombol Swap
+                
+            left_box.add(btn)
+            
+        anchor_left = arcade.gui.UIAnchorLayout()
+        anchor_left.add(child=left_box, anchor_x="left", anchor_y="center", align_x=20)
+        self.manager.add(anchor_left)
+
+        # ==========================================
+        # 2. PANEL ROSTER MUSUH (KANAN) - INFO SAJA
+        # ==========================================
+        right_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        for i, char in enumerate(self.enemy_party):
+            if char.current_hp <= 0:
+                text = f"💀 {char.name[:6]}..\nDEAD"
+            elif i == self.p2_idx:
+                text = f"▶️ {char.name[:6]}..\nAktif"
+            else:
+                text = f"⏳ {char.name[:6]}..\nMenunggu"
+            
+            btn = arcade.gui.UIFlatButton(text=text, width=120, height=60)
+            right_box.add(btn)
+            
+        anchor_right = arcade.gui.UIAnchorLayout()
+        anchor_right.add(child=right_box, anchor_x="right", anchor_y="center", align_x=-20)
+        self.manager.add(anchor_right)
+
+        # ==========================================
+        # 3. TOMBOL AKSI UTAMA (BAWAH)
+        # ==========================================
         self.h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
         
         attack_button = arcade.gui.UIFlatButton(text="⚔️ Attack", width=120)
         skill_button = arcade.gui.UIFlatButton(text="🔥 Skill", width=120)
         item_button = arcade.gui.UIFlatButton(text="🎒 Heal", width=120)
         
-        # --- TOMBOL ULTIMATE BARU ---
-        self.ulti_button = arcade.gui.UIFlatButton(text="🌟 Ultimate", width=150)
+        ulti_text = f"⏳ Ulti ({self.p1_active.current_ulti_cd})" if self.p1_active.current_ulti_cd > 0 else "🌟 Ultimate"
+        self.ulti_button = arcade.gui.UIFlatButton(text=ulti_text, width=150)
         
         attack_button.on_click = self.on_attack_click
         skill_button.on_click = self.on_skill_click
@@ -1051,14 +1107,34 @@ class BattleView(arcade.View):
         self.h_box.add(item_button)
         self.h_box.add(self.ulti_button)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.h_box, anchor_x="center", anchor_y="bottom", align_y=40)
-        self.manager.add(anchor_layout)
-        
-        # Trigger giliran pertama pemain
-        self.p1_active.on_turn_start()
-        if self.p1_active.passive_logs:
-            self.p1_log += f"\n{self.p1_active.passive_logs}"
+        anchor_bottom = arcade.gui.UIAnchorLayout()
+        anchor_bottom.add(child=self.h_box, anchor_x="center", anchor_y="bottom", align_y=40)
+        self.manager.add(anchor_bottom)
+
+    def make_swap_action(self, target_idx):
+        """Fungsi untuk menukar karakter saat tombol Roster diklik"""
+        def action(event):
+            if not self.is_player_turn: return
+            
+            old_char = self.p1_active
+            target_char = self.player_party[target_idx]
+            
+            # Ganti karakter aktif
+            self.p1_idx = target_idx
+            self.p1_active = target_char
+            self.update_layout() # Refresh posisi dan bar darah
+            
+            # Logika Visual & Teks
+            self.p1_log = f"🔄 {old_char.name} mundur!\n{target_char.name} maju ke garis depan!"
+            self.p2_log = ""
+            self.spawn_floating_text("SWITCH!", self.p1_base_x, self.base_y, arcade.color.CYAN)
+            self.shake_timer = 0.2
+            
+            # Menukar memakan 1 giliran (Check Game State memindah giliran ke musuh)
+            self.check_game_state()
+            self.build_ui()
+            
+        return action
 
     def trigger_flash(self, color, duration=0.15):
         self.flash_color = color
@@ -1068,14 +1144,15 @@ class BattleView(arcade.View):
     def update_layout(self):
         sw = self.window.width
         sh = self.window.height
-        self.p1_base_x = sw * 0.25
-        self.p2_base_x = sw * 0.75
+        self.p1_base_x = sw * 0.35 # Sedikit digeser ke tengah agar tidak menabrak tombol roster
+        self.p2_base_x = sw * 0.65
         self.base_y = sh * 0.50
         self.p1_sprite.center_x = self.p1_base_x
         self.p1_sprite.center_y = self.base_y
         self.p2_sprite.center_x = self.p2_base_x
         self.p2_sprite.center_y = self.base_y
 
+        # Buat ulang bar darah dengan karakter yang baru
         self.p1_hp_bar = StatusBar(self.p1_active, x=self.p1_base_x - 125, y=self.base_y + 140, width=250, height=20, is_mana=False)
         self.p1_mana_bar = StatusBar(self.p1_active, x=self.p1_base_x - 100, y=self.base_y + 110, width=200, height=15, is_mana=True)
         self.p2_hp_bar = StatusBar(self.p2_active, x=self.p2_base_x - 125, y=self.base_y + 140, width=250, height=20, is_mana=False)
@@ -1084,6 +1161,7 @@ class BattleView(arcade.View):
     def on_resize(self, width: int, height: int):
         super().on_resize(width, height)
         self.update_layout()
+        self.build_ui()
 
     def spawn_floating_text(self, text, x, y, color):
         adjusted_y = y
@@ -1093,31 +1171,37 @@ class BattleView(arcade.View):
         self.floating_texts.append(FloatingText(text, x, adjusted_y, color))
 
     def handle_death(self) -> bool:
+        # MUSUH MATI (Cari musuh yang masih hidup)
         if self.p2_active.current_hp <= 0:
-            self.p2_idx += 1
-            if self.p2_idx >= len(self.enemy_party):
+            alive_enemies = [i for i, c in enumerate(self.enemy_party) if c.current_hp > 0]
+            if not alive_enemies:
                 self.manager.disable()
                 self.window.show_view(GameOverView("Tim Pemain", "Tim Musuh", self.p1_active.current_hp, True, self.difficulty, self.player_types))
                 return True
             else:
+                self.p2_idx = alive_enemies[0] # Ambil musuh hidup pertama
                 self.p2_active = self.enemy_party[self.p2_idx]
                 self.p2_log = f"Musuh gugur! {self.p2_active.name} melompat ke arena!"
                 self.update_layout()
+                self.build_ui()
                 self.current_turn = self.p1_active
                 self.is_player_turn = True
                 self.p1_active.on_turn_start()
                 return True
 
+        # PEMAIN MATI (Cari pemain yang masih hidup)
         if self.p1_active.current_hp <= 0:
-            self.p1_idx += 1
-            if self.p1_idx >= len(self.player_party):
+            alive_players = [i for i, c in enumerate(self.player_party) if c.current_hp > 0]
+            if not alive_players:
                 self.manager.disable()
                 self.window.show_view(GameOverView("Tim Musuh", "Tim Pemain", self.p2_active.current_hp, False, self.difficulty, self.player_types))
                 return True
             else:
+                self.p1_idx = alive_players[0] # Ambil pemain hidup pertama
                 self.p1_active = self.player_party[self.p1_idx]
-                self.p1_log = f"Rekanmu gugur! {self.p1_active.name} melompat ke arena!\nGiliran Anda."
+                self.p1_log = f"Rekanmu gugur! {self.p1_active.name} otomatis maju!\nGiliran Anda."
                 self.update_layout()
+                self.build_ui()
                 self.current_turn = self.p1_active
                 self.is_player_turn = True
                 self.p1_active.on_turn_start()
@@ -1132,7 +1216,6 @@ class BattleView(arcade.View):
             status = command.execute(self.p1_active, self.p2_active)
             self.p2_log = ""
             
-            # Cek log pasif saat diserang (seperti pantulan emperor)
             passive_msg = f"\n{self.p1_active.passive_logs}" if self.p1_active.passive_logs else ""
             
             if status == "DODGE":
@@ -1146,7 +1229,9 @@ class BattleView(arcade.View):
             else:
                 self.p1_log = "Melancarkan Basic Attack!" + passive_msg
                 self.spawn_floating_text("BAM!", self.p2_base_x, self.base_y, arcade.color.RED)
+            
             self.check_game_state()
+            self.build_ui()
 
     def on_skill_click(self, event):
         if not self.is_player_turn: return 
@@ -1160,7 +1245,9 @@ class BattleView(arcade.View):
             self.spawn_floating_text("SKILL!", self.p2_base_x, self.base_y, arcade.color.ORANGE)
             self.shake_timer = 0.5
             self.trigger_flash(arcade.color.LIGHT_BLUE)
+            
             self.check_game_state()
+            self.build_ui()
 
     def on_item_click(self, event):
         if not self.is_player_turn: return 
@@ -1173,20 +1260,20 @@ class BattleView(arcade.View):
             self.p1_log = f"Meminum {potion.name}!"
             self.p2_log = ""
             self.spawn_floating_text("+40 HP", self.p1_base_x, self.base_y, arcade.color.LIGHT_GREEN)
+            
             self.check_game_state()
+            self.build_ui()
 
-    # --- FUNGSI KLIK ULTIMATE BARU ---
     def on_ultimate_click(self, event):
         if not self.is_player_turn: return
         if self.current_turn == self.p1_active:
             from engine.commands import UltimateCommand
             command = UltimateCommand()
             
-            # Eksekusi Ultimate (Kirim data party untuk AoE/Heal Area)
             status, log_msg = command.execute(self.p1_active, self.p2_active, self.enemy_party, self.player_party)
             
             if status == "FAIL":
-                self.p1_log = log_msg # Tampilkan pesan Ultimate belum siap
+                self.p1_log = log_msg 
                 self.spawn_floating_text("NOT READY!", self.p1_base_x, self.base_y, arcade.color.GRAY)
             else:
                 self.p1_log = log_msg
@@ -1194,21 +1281,19 @@ class BattleView(arcade.View):
                 self.spawn_floating_text("ULTIMATE!", self.p1_base_x, self.base_y + 50, arcade.color.MAGENTA)
                 self.shake_timer = 0.8
                 self.trigger_flash(arcade.color.MAGENTA, 0.4)
+                
                 self.check_game_state()
+                self.build_ui()
 
     def check_game_state(self):
         if self.handle_death(): return
         
-        # Pindah Giliran ke Musuh
         self.current_turn = self.p2_active
         self.is_player_turn = False 
         
-        # Trigger awal giliran musuh (Aktivasi Pasif Musuh)
         self.p2_active.on_turn_start()
-        
         effect_logs = self.p2_active.process_effects()
         
-        # Kumpulkan log pasif & efek status
         combined_log = ""
         if self.p2_active.passive_logs:
             combined_log += f"{self.p2_active.passive_logs}\n"
@@ -1223,12 +1308,6 @@ class BattleView(arcade.View):
         self.enemy_delay_timer = 1.5
 
     def on_update(self, delta_time: float):
-        # Update teks tombol Ultimate berdasarkan Cooldown
-        if self.p1_active.current_ulti_cd > 0:
-            self.ulti_button.text = f"⏳ Ulti ({self.p1_active.current_ulti_cd})"
-        else:
-            self.ulti_button.text = "🌟 Ultimate"
-
         for f_text in self.floating_texts:
             f_text.update()
         self.floating_texts = [f for f in self.floating_texts if not f.is_dead()]
@@ -1265,8 +1344,6 @@ class BattleView(arcade.View):
         from engine.commands import BasicAttackCommand, SpecialSkillCommand, UltimateCommand
         import random
         
-        # --- KEPINTARAN BUATAN (AI) MUSUH ---
-        # 1. Jika Ultimate Musuh Siap, dia pasti akan menggunakannya!
         if self.p2_active.current_ulti_cd <= 0:
             command = UltimateCommand()
             status, log_msg = command.execute(self.p2_active, self.p1_active, self.player_party, self.enemy_party)
@@ -1276,7 +1353,6 @@ class BattleView(arcade.View):
             self.trigger_flash(arcade.color.RED, 0.4)
             
         else:
-            # 2. Jika tidak, gunakan serangan biasa atau skill (Basic AI)
             chance = random.randint(1, 100)
             if chance <= 30 and self.p2_active.current_mana >= 20:
                 command = SpecialSkillCommand()
@@ -1302,11 +1378,9 @@ class BattleView(arcade.View):
 
         if self.handle_death(): return
         
-        # Pindah Giliran ke Pemain
         self.current_turn = self.p1_active
         self.is_player_turn = True 
         
-        # Trigger awal giliran pemain (Aktivasi Pasif)
         self.p1_active.on_turn_start()
         
         effect_logs = self.p1_active.process_effects()
@@ -1320,6 +1394,7 @@ class BattleView(arcade.View):
         combined_log += "\nGiliran Anda!"
         self.p1_log = combined_log
 
+        self.build_ui()
         if self.handle_death(): return
 
     def on_show_view(self):
@@ -1329,18 +1404,7 @@ class BattleView(arcade.View):
         self.clear()
         self.character_sprites.draw()
         
-        p1_remaining = len(self.player_party) - self.p1_idx
-        p2_remaining = len(self.enemy_party) - self.p2_idx
-
-        arcade.Text(
-            f"Tim Anda: {p1_remaining}/{len(self.player_party)} Bertahan", 
-            x=self.p1_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
-        ).draw()
-        arcade.Text(
-            f"Tim Musuh: {p2_remaining}/{len(self.enemy_party)} Bertahan", 
-            x=self.p2_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
-        ).draw()
-
+        # Indikator di atas kepala disederhanakan
         arcade.Text(self.p1_active.name, x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         arcade.Text(self.p2_active.name, x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         
