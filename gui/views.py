@@ -910,7 +910,7 @@ class InventoryView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 6. LAYAR PERTEMPURAN (UPDATE PENERUSAN DATA)
+# 6. LAYAR PERTEMPURAN (UPDATE: EFEK TWEENING & FLASH)
 # ==========================================
 class BattleView(arcade.View):
     def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list):
@@ -918,7 +918,7 @@ class BattleView(arcade.View):
         self.player_party = player_party
         self.enemy_party = enemy_party
         self.difficulty = difficulty
-        self.player_types = player_types # Disimpan untuk hadiah EXP
+        self.player_types = player_types 
         
         self.p1_idx = 0
         self.p2_idx = 0
@@ -929,7 +929,12 @@ class BattleView(arcade.View):
         self.p2_log = ""
         self.is_player_turn = True
         self.enemy_delay_timer = 0.0
+        
+        # --- STATE EFEK VISUAL BARU ---
         self.shake_timer = 0.0
+        self.flash_timer = 0.0
+        self.flash_duration = 0.0
+        self.flash_color = arcade.color.WHITE
 
         self.character_sprites = arcade.SpriteList()
         self.p1_sprite = arcade.SpriteSolidColor(150, 220, color=arcade.color.CRIMSON)
@@ -957,6 +962,12 @@ class BattleView(arcade.View):
         anchor_layout = arcade.gui.UIAnchorLayout()
         anchor_layout.add(child=self.h_box, anchor_x="center", anchor_y="bottom", align_y=40)
         self.manager.add(anchor_layout)
+
+    def trigger_flash(self, color, duration=0.15):
+        """Fungsi untuk memicu efek kilat layar"""
+        self.flash_color = color
+        self.flash_timer = duration
+        self.flash_duration = duration
 
     def update_layout(self):
         sw = self.window.width
@@ -986,12 +997,10 @@ class BattleView(arcade.View):
         self.floating_texts.append(FloatingText(text, x, adjusted_y, color))
 
     def handle_death(self) -> bool:
-        # MUSUH MATI
         if self.p2_active.current_hp <= 0:
             self.p2_idx += 1
             if self.p2_idx >= len(self.enemy_party):
                 self.manager.disable()
-                # PANGGIL GAME OVER (Pemain Menang = True)
                 self.window.show_view(GameOverView("Tim Pemain", "Tim Musuh", self.p1_active.current_hp, True, self.difficulty, self.player_types))
                 return True
             else:
@@ -1002,12 +1011,10 @@ class BattleView(arcade.View):
                 self.is_player_turn = True
                 return True
 
-        # PEMAIN MATI
         if self.p1_active.current_hp <= 0:
             self.p1_idx += 1
             if self.p1_idx >= len(self.player_party):
                 self.manager.disable()
-                # PANGGIL GAME OVER (Pemain Menang = False)
                 self.window.show_view(GameOverView("Tim Musuh", "Tim Pemain", self.p2_active.current_hp, False, self.difficulty, self.player_types))
                 return True
             else:
@@ -1032,6 +1039,7 @@ class BattleView(arcade.View):
                 self.p1_log = "CRITICAL HIT!"
                 self.spawn_floating_text("CRITICAL!", self.p2_base_x, self.base_y, arcade.color.GOLD)
                 self.shake_timer = 0.3
+                self.trigger_flash(arcade.color.WHITE) # EFEK FLASH
             else:
                 self.p1_log = "Melancarkan Basic Attack!"
                 self.spawn_floating_text("BAM!", self.p2_base_x, self.base_y, arcade.color.RED)
@@ -1046,6 +1054,7 @@ class BattleView(arcade.View):
             self.p2_log = ""
             self.spawn_floating_text("SKILL!", self.p2_base_x, self.base_y, arcade.color.ORANGE)
             self.shake_timer = 0.5
+            self.trigger_flash(arcade.color.LIGHT_BLUE) # EFEK FLASH WARNA BIRU
             self.check_game_state()
 
     def on_item_click(self, event):
@@ -1071,17 +1080,31 @@ class BattleView(arcade.View):
         self.enemy_delay_timer = 1.5
 
     def on_update(self, delta_time: float):
+        # 1. Update Floating Text
         for f_text in self.floating_texts:
             f_text.update()
         self.floating_texts = [f for f in self.floating_texts if not f.is_dead()]
 
+        # 2. Update Animasi StatusBar Darah (BARU)
+        self.p1_hp_bar.update(delta_time)
+        self.p1_mana_bar.update(delta_time)
+        self.p2_hp_bar.update(delta_time)
+        self.p2_mana_bar.update(delta_time)
+
+        # 3. Update Timer Layar Kilat (BARU)
+        if self.flash_timer > 0:
+            self.flash_timer -= delta_time
+
+        # 4. Logika AI Musuh
         if not self.is_player_turn and self.enemy_delay_timer > 0:
             self.enemy_delay_timer -= delta_time
             if self.enemy_delay_timer <= 0:
                 self.enemy_turn()
 
+        # 5. Layar Guncang (Screen Shake)
         if self.shake_timer > 0:
             self.shake_timer -= delta_time
+            import random
             offset_x = random.randint(-8, 8)
             offset_y = random.randint(-8, 8)
             self.p1_sprite.center_x = self.p1_base_x + offset_x
@@ -1111,10 +1134,12 @@ class BattleView(arcade.View):
             self.p2_log = "CRITICAL HIT!"
             self.spawn_floating_text("CRITICAL!", self.p1_base_x, self.base_y, arcade.color.GOLD)
             self.shake_timer = 0.3
+            self.trigger_flash(arcade.color.RED) # Kilat Merah saat kena Crit
         elif status == "SKILL":
             self.p2_log = log_msg.capitalize()
             self.spawn_floating_text("SKILL!", self.p1_base_x, self.base_y, arcade.color.ORANGE)
             self.shake_timer = 0.5
+            self.trigger_flash(arcade.color.RED)
         else:
             self.p2_log = log_msg.capitalize()
             self.spawn_floating_text("BAM!", self.p1_base_x, self.base_y, arcade.color.RED)
@@ -1141,7 +1166,6 @@ class BattleView(arcade.View):
         p1_remaining = len(self.player_party) - self.p1_idx
         p2_remaining = len(self.enemy_party) - self.p2_idx
 
-        # UBAH: Font size indikator bertahan diperbesar dari 12 ke 14
         arcade.Text(
             f"Tim Anda: {p1_remaining}/{len(self.player_party)} Bertahan", 
             x=self.p1_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
@@ -1151,7 +1175,6 @@ class BattleView(arcade.View):
             x=self.p2_base_x, y=self.base_y + 220, color=arcade.color.YELLOW, font_size=14, bold=True, anchor_x="center"
         ).draw()
 
-        # Nama karakter
         arcade.Text(self.p1_active.name, x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         arcade.Text(self.p2_active.name, x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         
@@ -1160,7 +1183,6 @@ class BattleView(arcade.View):
         self.p2_hp_bar.draw()
         self.p2_mana_bar.draw()
         
-        # UBAH LOG SERANGAN: Warna menjadi WHITE bersih, ditebalkan (bold=True), dan font_size naik ke 18
         arcade.Text(
             self.p1_log, x=self.p1_base_x, y=self.base_y - 140, 
             color=arcade.color.WHITE, font_size=18, bold=True, 
@@ -1177,6 +1199,22 @@ class BattleView(arcade.View):
             f_text.draw()
             
         self.manager.draw()
+
+        # ===============================================
+        # GAMBAR EFEK KILAT LAYAR (SCREEN FLASH) PALING ATAS
+        # ===============================================
+        if self.flash_timer > 0 and self.flash_duration > 0:
+            # Hitung opasitas (transparansi) agar memudar seiring waktu
+            alpha = int(255 * (self.flash_timer / self.flash_duration))
+            alpha = max(0, min(255, alpha)) # Pastikan di antara 0-255
+            current_flash_color = (*self.flash_color[:3], alpha)
+            
+            # --- PERBAIKAN ARCADE 3.0 ---
+            # Menggunakan titik sudut penuh untuk menutupi layar
+            sw = self.window.width
+            sh = self.window.height
+            points = ((0, 0), (sw, 0), (sw, sh), (0, sh))
+            arcade.draw_polygon_filled(points, current_flash_color)
 
 # ==========================================
 # 7. LAYAR RIWAYAT PERTANDINGAN
