@@ -26,18 +26,20 @@ class MainMenuView(arcade.View):
         )
         
         start_button = arcade.gui.UIFlatButton(text="⚔️ Mulai Permainan", width=200)
-        gacha_button = arcade.gui.UIFlatButton(text="🎲 Tarik Gacha", width=200) # TOMBOL BARU
+        gacha_button = arcade.gui.UIFlatButton(text="🎲 Tarik Gacha", width=200)
+        inv_button = arcade.gui.UIFlatButton(text="🎒 Inventory", width=200) # BARU
         history_button = arcade.gui.UIFlatButton(text="📜 Lihat Riwayat", width=200) 
         quit_button = arcade.gui.UIFlatButton(text="❌ Keluar", width=200)
 
         start_button.on_click = self.on_start_click
         gacha_button.on_click = self.on_gacha_click # EVENT BARU
+        inv_button.on_click = self.on_inv_click
         history_button.on_click = self.on_history_click 
         quit_button.on_click = self.on_quit_click
 
-        self.v_box.add(title_label)
         self.v_box.add(start_button)
-        self.v_box.add(gacha_button) # MASUKKAN KE LAYOUT
+        self.v_box.add(gacha_button)
+        self.v_box.add(inv_button) # BARU
         self.v_box.add(history_button) 
         self.v_box.add(quit_button)
 
@@ -52,6 +54,10 @@ class MainMenuView(arcade.View):
     def on_gacha_click(self, event):
         self.manager.disable()
         self.window.show_view(GachaView())
+
+    def on_inv_click(self, event):
+        self.manager.disable()
+        self.window.show_view(InventoryView())
 
     def on_history_click(self, event):
         self.manager.disable()
@@ -318,70 +324,149 @@ class CharacterSelectionView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 4.5 LAYAR PERSIAPAN EQUIPMENT (BARU)
+# 4.5 LAYAR PERSIAPAN EQUIPMENT (PERBAIKAN BUG STOK & UI MODERN)
 # ==========================================
 class EquipmentSelectionView(arcade.View):
     def __init__(self, player_types: list, enemy_types: list, difficulty: str):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
         self.player_types = player_types
         self.enemy_types = enemy_types
         self.difficulty = difficulty
 
-        # Ambil inventory dari Save Data (hapus duplikat dengan set)
+        # 1. Hitung jumlah sebenarnya dari setiap item di Inventory
         raw_inventory = SaveManager.get_inventory()
-        self.inventory = ["Tangan Kosong"] + list(set(raw_inventory))
+        self.inventory_counts = {"Tangan Kosong": 999} # Tangan kosong tak terbatas
+        for item in raw_inventory:
+            self.inventory_counts[item] = self.inventory_counts.get(item, 0) + 1
         
-        # Simpan indeks pilihan item untuk masing-masing karakter
-        self.selected_eq_indices = [0] * len(self.player_types)
+        # 2. Catat item apa yang sedang dipakai oleh masing-masing karakter
+        self.equipped_items = ["Tangan Kosong"] * len(self.player_types)
+
+        # Bangun UI Utama
+        self.build_main_ui()
+
+    def build_main_ui(self):
+        """Membuat tampilan awal pemilihan equipment karakter"""
+        self.manager.clear() # Bersihkan widget sebelumnya
+        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
         title = arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=24, bold=True)
         self.v_box.add(title)
-        self.v_box.add(arcade.gui.UILabel(text="Klik kotak di samping nama untuk mengganti senjata/zirah", text_color=arcade.color.LIGHT_GRAY, font_size=12))
+        self.v_box.add(arcade.gui.UILabel(text="Klik tombol di samping nama untuk membuka daftar equipment", text_color=arcade.color.LIGHT_GRAY, font_size=12))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
-        # Buat Baris Tombol untuk setiap Karakter
+        # Buat Baris untuk setiap Karakter
         for i, char_type in enumerate(self.player_types):
             row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-            
             lbl = arcade.gui.UILabel(text=f"{char_type}", width=120, font_size=14, bold=True)
             
-            # Tombol yang bisa diklik untuk mengganti item (Cycle)
-            btn = arcade.gui.UIFlatButton(text=self.inventory[0], width=250)
-            btn.on_click = self.make_cycle_action(i, btn)
+            # Tombol menunjukkan item yang SEDANG dipakai
+            current_item = self.equipped_items[i]
+            btn = arcade.gui.UIFlatButton(text=current_item, width=300)
+            
+            # Saat diklik, buka jendela "Dropdown/Modal"
+            btn.on_click = self.make_open_picker_action(i)
             
             row.add(lbl)
             row.add(btn)
             self.v_box.add(row)
 
         self.v_box.add(arcade.gui.UILabel(text="", height=20))
-        
         start_btn = arcade.gui.UIFlatButton(text="🔥 Masuk ke Arena 🔥", width=380)
         start_btn.on_click = self.on_start_battle
         self.v_box.add(start_btn)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
 
-    def make_cycle_action(self, char_index, button_widget):
-        """Fungsi Closure untuk memutar pilihan item di tombol"""
+    def make_open_picker_action(self, char_idx):
         def action(event):
-            # Geser indeks ke item berikutnya
-            current_idx = self.selected_eq_indices[char_index]
-            next_idx = (current_idx + 1) % len(self.inventory)
-            self.selected_eq_indices[char_index] = next_idx
+            self.open_item_picker(char_idx)
+        return action
+
+    def open_item_picker(self, char_idx):
+        """Membuat layar pop-up/overlay ala Select Field untuk memilih item"""
+        self.manager.clear()
+        picker_box = arcade.gui.UIBoxLayout(space_between=10)
+        
+        picker_box.add(arcade.gui.UILabel(text=f"Pilih Equipment untuk {self.player_types[char_idx]}", font_size=20, text_color=arcade.color.GOLD, bold=True))
+        picker_box.add(arcade.gui.UILabel(text="", height=10))
+
+        from engine.gacha_system import GachaSystem
+        import os
+        
+        # Loop semua item unik yang kita punya
+        for item_name, count in self.inventory_counts.items():
+            # Sembunyikan item yang stoknya habis (kecuali sedang dipakai orang lain)
+            if count <= 0 and item_name != "Tangan Kosong":
+                continue 
+                
+            row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
             
-            # Perbarui teks tombol
-            button_widget.text = self.inventory[next_idx]
+            # RENDER GAMBAR ITEM JIKA ADA
+            if item_name != "Tangan Kosong":
+                item_data = GachaSystem.ITEM_POOL.get(item_name)
+                img_path = item_data.get("img", "") if item_data else ""
+                
+                if os.path.exists(img_path):
+                    tex = arcade.load_texture(img_path)
+                    tex_widget = arcade.gui.UITextureRectangle(texture=tex, width=40, height=40)
+                    row.add(tex_widget)
+                else:
+                    placeholder = arcade.gui.UISpace(width=40, height=40, color=arcade.color.GRAY)
+                    row.add(placeholder)
+            else:
+                placeholder = arcade.gui.UISpace(width=40, height=40, color=arcade.color.DARK_GRAY)
+                row.add(placeholder)
+
+            # RENDER TOMBOL & TEKS INFORMASI
+            if item_name == "Tangan Kosong":
+                btn_text = "Tangan Kosong (Lepas Equipment)"
+            else:
+                desc = item_data["desc"] if item_data else "Tidak ada deskripsi"
+                btn_text = f"[{item_data['rarity']}] {item_name} (Sisa: {count})\nEfek: {desc}"
+
+            # PERBAIKAN: Tombol diperlebar (width=650) dan ditinggikan (height=60) agar teks lega
+            btn = arcade.gui.UIFlatButton(text=btn_text, width=650, height=60)
+            btn.on_click = self.make_select_item_action(char_idx, item_name)
+            
+            row.add(btn)
+            picker_box.add(row)
+            
+        picker_box.add(arcade.gui.UILabel(text="", height=10))
+        back_btn = arcade.gui.UIFlatButton(text="Batal", width=200)
+        back_btn.on_click = lambda e: self.build_main_ui()
+        picker_box.add(back_btn)
+
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=picker_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    def make_select_item_action(self, char_idx, item_name):
+        def action(event):
+            # 1. Kembalikan item lama ke inventory (jika bukan Tangan Kosong)
+            old_item = self.equipped_items[char_idx]
+            if old_item != "Tangan Kosong":
+                self.inventory_counts[old_item] += 1
+            
+            # 2. Kurangi stok item baru (jika bukan Tangan Kosong)
+            if item_name != "Tangan Kosong":
+                self.inventory_counts[item_name] -= 1
+                
+            # 3. Pasangkan ke karakter
+            self.equipped_items[char_idx] = item_name
+            
+            # 4. Kembali ke UI Utama
+            self.build_main_ui()
         return action
 
     def on_start_battle(self, event):
         self.manager.disable()
-        from models.equipment import Weapon, Armor
+        from models.equipment import Equipment 
         from engine.gacha_system import GachaSystem
         
         # 1. SETUP TIM PEMAIN (Terapkan Equipment Pilihan)
@@ -389,29 +474,23 @@ class EquipmentSelectionView(arcade.View):
         player_levels = []
         for i, char_type in enumerate(self.player_types):
             char = CharacterFactory.create_character(char_type, f"{char_type} (P{i+1})")
-            
-            # Terapkan Level
             level = SaveManager.get_character_data(char_type)["level"]
             char.apply_scaling(level=level, stat_multiplier=1.0)
             player_levels.append(level)
             
-            # Terapkan Equipment (Decorator)
-            eq_name = self.inventory[self.selected_eq_indices[i]]
+            # Ambil item dari data state, bukan lagi dari index putaran
+            eq_name = self.equipped_items[i]
             if eq_name != "Tangan Kosong":
                 eq_data = GachaSystem.ITEM_POOL[eq_name]
-                if eq_data["type"] == "Weapon":
-                    char = Weapon(char, weapon_name=eq_name, bonus_attack=eq_data["bonus"])
-                elif eq_data["type"] == "Armor":
-                    char = Armor(char, armor_name=eq_name, bonus_defense=eq_data["bonus"])
+                char = Equipment(char, item_name=eq_name, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
                     
             player_party.append(char)
             
-        # 2. SETUP TIM MUSUH (Auto-Equip Random Item)
+        # 2. SETUP TIM MUSUH (Otomatis & Random)
         avg_level = max(1, sum(player_levels) // len(player_levels))
         diff_settings = DIFFICULTY_SETTINGS[self.difficulty]
         enemy_level = min(avg_level, diff_settings["enemy_cap"])
         
-        # Ambil daftar semua nama item dari sistem Gacha
         all_items = list(GachaSystem.ITEM_POOL.keys())
         
         enemy_party = []
@@ -419,14 +498,10 @@ class EquipmentSelectionView(arcade.View):
             char = CharacterFactory.create_character(char_type, f"{char_type} (Musuh {i+1})")
             char.apply_scaling(level=enemy_level, stat_multiplier=diff_settings["stat_mult"])
             
-            # Musuh mengambil item acak dari pool Gacha
             import random
             random_eq = random.choice(all_items)
             eq_data = GachaSystem.ITEM_POOL[random_eq]
-            if eq_data["type"] == "Weapon":
-                char = Weapon(char, weapon_name=random_eq, bonus_attack=eq_data["bonus"])
-            elif eq_data["type"] == "Armor":
-                char = Armor(char, armor_name=random_eq, bonus_defense=eq_data["bonus"])
+            char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
                 
             enemy_party.append(char)
 
@@ -512,6 +587,78 @@ class GameOverView(arcade.View):
         self.clear()
         self.manager.draw()
 
+# ==========================================
+# LAYAR INVENTORY (BARU)
+# ==========================================
+class InventoryView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.v_box = arcade.gui.UIBoxLayout(space_between=10)
+
+        self.v_box.add(arcade.gui.UILabel(text="🎒 INVENTORY EQUIPMENT 🎒", text_color=arcade.color.GOLD, font_size=24, bold=True))
+        self.v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        raw_inventory = SaveManager.get_inventory()
+        
+        if not raw_inventory:
+            self.v_box.add(arcade.gui.UILabel(text="Inventory Anda kosong. Tarik Gacha dulu!", text_color=arcade.color.LIGHT_GRAY))
+        else:
+            # Hitung jumlah item kembar
+            item_counts = {}
+            for item in raw_inventory:
+                item_counts[item] = item_counts.get(item, 0) + 1
+
+            from engine.gacha_system import GachaSystem
+            import os
+            
+            # Membuat Scrollable Area jika item banyak (Opsional tapi rapi)
+            for item_name, count in item_counts.items():
+                item_data = GachaSystem.ITEM_POOL.get(item_name)
+                if not item_data: continue
+                
+                # Baris horizontal untuk gambar & teks
+                h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+                
+                # Memuat Gambar Item (Jika file tidak ada, lewati gambar)
+                img_path = item_data["img"]
+                if os.path.exists(img_path):
+                    texture = arcade.load_texture(img_path)
+                    tex_widget = arcade.gui.UITextureRectangle(texture=texture, width=40, height=40)
+                    h_box.add(tex_widget)
+                
+                # Teks Detail
+                color = arcade.color.WHITE
+                if item_data["rarity"] == "Mythic": color = arcade.color.PURPLE
+                elif item_data["rarity"] == "Legendary": color = arcade.color.GOLD
+                elif item_data["rarity"] == "Rare": color = arcade.color.LIGHT_BLUE
+                
+                detail_text = f"[{item_data['rarity']}] {item_name} (x{count})\nEfek: {item_data['desc']}"
+                text_lbl = arcade.gui.UILabel(text=detail_text, text_color=color, font_size=12, width=400, multiline=True)
+                
+                h_box.add(text_lbl)
+                self.v_box.add(h_box)
+
+        self.v_box.add(arcade.gui.UILabel(text="", height=20))
+        back_btn = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=250)
+        back_btn.on_click = self.on_back_click
+        self.v_box.add(back_btn)
+
+        anchor_layout = arcade.gui.UIAnchorLayout()
+        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor_layout)
+
+    def on_back_click(self, event):
+        self.manager.disable()
+        self.window.show_view(MainMenuView())
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
 
 # ==========================================
 # 6. LAYAR PERTEMPURAN (UPDATE PENERUSAN DATA)
