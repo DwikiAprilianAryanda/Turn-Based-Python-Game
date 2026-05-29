@@ -52,3 +52,39 @@ class StatusBar:
             font_size=12, bold=True,
             anchor_x="center", anchor_y="center"
         ).draw()
+
+        # Tambahkan di bagian paling bawah gui/widgets.py
+
+class FloatingText:
+    """Kelas untuk membuat efek teks melayang yang bersih dan modern."""
+    def __init__(self, text: str, x: int, y: int, color: tuple):
+        self.text = text
+        self.x = x
+        self.y = y
+        
+        # Konversi warna ke format RGBA agar bisa dibuat transparan
+        if len(color) == 3:
+            self.color = [color[0], color[1], color[2], 255]
+        else:
+            self.color = list(color)
+            
+        self.text_obj = arcade.Text(
+            self.text, self.x, self.y, tuple(self.color), 
+            font_size=18, bold=True, anchor_x="center"
+        )
+
+    def update(self):
+        self.y += 1.5       # Mengambang ke atas
+        self.color[3] -= 5  # Mengurangi opacity (memudar)
+        if self.color[3] < 0:
+            self.color[3] = 0
+            
+        self.text_obj.y = self.y
+        self.text_obj.color = tuple(self.color)
+
+    def is_dead(self):
+        return self.color[3] <= 0
+
+    def draw(self):
+        if self.color[3] > 0:
+            self.text_obj.draw()

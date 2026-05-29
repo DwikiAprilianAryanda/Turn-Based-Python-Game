@@ -1,5 +1,6 @@
 from models.character import Character
 from models.effects import PoisonEffect
+from engine.ai_strategy import AggressiveAI
 
 class Gladiator(Character):
     def __init__(self, name: str):
@@ -11,6 +12,7 @@ class Gladiator(Character):
             base_attack=25, 
             base_defense=4
         )
+        self.ai_strategy = AggressiveAI()
 
     # Penerapan Polymorphism: Meng-override metode yang sama dengan logika yang berbeda
     def use_special_skill(self, target: Character):

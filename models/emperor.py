@@ -1,5 +1,6 @@
 from models.character import Character
 from models.effects import PowerUpEffect
+from engine.ai_strategy import DefensiveAI
 
 class Emperor(Character):
     def __init__(self, name: str):
@@ -12,6 +13,7 @@ class Emperor(Character):
             base_attack=15, 
             base_defense=10
         )
+        self.ai_strategy = DefensiveAI()
 
     # Penerapan Polymorphism: Meng-override metode abstrak sesuai mekanik unik kelas ini
     def use_special_skill(self, target: Character):
