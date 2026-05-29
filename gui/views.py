@@ -193,7 +193,7 @@ class GameOverView(arcade.View):
 
 
 # ==========================================
-# 3. LAYAR PERTEMPURAN (UPDATE FINAL)
+# 3. LAYAR PERTEMPURAN (UPDATE UI LOG TERPISAH)
 # ==========================================
 class BattleView(arcade.View):
     def __init__(self, player1: Character, player2: Character):
@@ -201,9 +201,27 @@ class BattleView(arcade.View):
         self.player1 = player1
         self.player2 = player2
         self.current_turn = self.player1
-        self.battle_log = f"Pertempuran Dimulai!\nGiliran {self.player1.name}."
+        
+        # --- PERUBAHAN UI LOG ---
+        # Memisahkan log menjadi dua agar tidak menumpuk di tengah
+        self.p1_log = "Pertempuran Dimulai!\nGiliran Anda."
+        self.p2_log = ""
 
-        # List untuk menampung animasi teks melayang
+        self.is_player_turn = True
+        self.enemy_delay_timer = 0.0
+
+        self.character_sprites = arcade.SpriteList()
+
+        self.p1_sprite = arcade.SpriteSolidColor(120, 180, arcade.color.CRIMSON)
+        self.p1_sprite.center_x = 200
+        self.p1_sprite.center_y = 320
+        self.character_sprites.append(self.p1_sprite)
+
+        self.p2_sprite = arcade.SpriteSolidColor(120, 180, arcade.color.ROYAL_BLUE)
+        self.p2_sprite.center_x = 600
+        self.p2_sprite.center_y = 320
+        self.character_sprites.append(self.p2_sprite)
+
         self.floating_texts = []
 
         self.p1_hp_bar = StatusBar(self.player1, x=50, y=480, width=200, height=20, is_mana=False)
@@ -217,7 +235,7 @@ class BattleView(arcade.View):
         
         attack_button = arcade.gui.UIFlatButton(text="⚔️ Attack", width=150)
         skill_button = arcade.gui.UIFlatButton(text="🔥 Skill", width=150)
-        item_button = arcade.gui.UIFlatButton(text="🎒 Heal (+40 HP)", width=150)
+        item_button = arcade.gui.UIFlatButton(text="🎒 Heal", width=150)
 
         attack_button.on_click = self.on_attack_click
         skill_button.on_click = self.on_skill_click
@@ -232,41 +250,51 @@ class BattleView(arcade.View):
         self.manager.add(anchor_layout)
 
     def spawn_floating_text(self, text, x, y, color):
-        """Mendeteksi tumpukan teks dan menggesernya secara dinamis."""
         adjusted_y = y
         for f_text in self.floating_texts:
-            # Jika ada teks di area yang berdekatan (selisih jarak X dan Y kecil)
             if abs(f_text.x - x) < 50 and abs(f_text.y - adjusted_y) < 30:
-                adjusted_y += 30  # Geser posisi Y ke atas sejauh 30 pixel
-                
+                adjusted_y += 30
         self.floating_texts.append(FloatingText(text, x, adjusted_y, color))
 
     def on_attack_click(self, event):
+        if not self.is_player_turn: return 
+
         if self.current_turn == self.player1:
             command = BasicAttackCommand()
             command.execute(self.player1, self.player2)
-            self.battle_log = f"{self.player1.name} melancarkan Basic Attack!"
-            # UBAH BARIS INI:
-            self.spawn_floating_text("BAM!", 650, 520, arcade.color.RED)
+            
+            # Tampilkan info hanya di sisi kiri, kosongkan sisi kanan
+            self.p1_log = "Melancarkan Basic Attack!"
+            self.p2_log = ""
+            
+            self.spawn_floating_text("BAM!", 600, 420, arcade.color.RED)
             self.check_game_state()
 
     def on_skill_click(self, event):
+        if not self.is_player_turn: return 
+
         if self.current_turn == self.player1:
             command = SpecialSkillCommand()
             command.execute(self.player1, self.player2)
-            self.battle_log = f"{self.player1.name} menggunakan Special Skill!"
-            # UBAH BARIS INI:
-            self.spawn_floating_text("SKILL!", 650, 520, arcade.color.ORANGE)
+            
+            self.p1_log = "Menggunakan Special Skill!"
+            self.p2_log = ""
+            
+            self.spawn_floating_text("SKILL!", 600, 420, arcade.color.ORANGE)
             self.check_game_state()
 
     def on_item_click(self, event):
+        if not self.is_player_turn: return 
+
         if self.current_turn == self.player1:
             potion = HealthPotion()
             command = UseItemCommand(potion)
             command.execute(self.player1, self.player2)
-            self.battle_log = f"{self.player1.name} meminum {potion.name}!"
-            # UBAH BARIS INI:
-            self.spawn_floating_text("+40 HP", 150, 520, arcade.color.LIGHT_GREEN)
+            
+            self.p1_log = f"Meminum {potion.name}!"
+            self.p2_log = ""
+            
+            self.spawn_floating_text("+40 HP", 200, 420, arcade.color.LIGHT_GREEN)
             self.check_game_state()
 
     def check_game_state(self):
@@ -276,58 +304,70 @@ class BattleView(arcade.View):
             return
 
         self.current_turn = self.player2
+        self.is_player_turn = False 
+
+        # Efek status musuh (jika ada) ditampilkan di sisi kanan
         effect_logs = self.player2.process_effects()
         if effect_logs:
-            self.battle_log += f"\n{effect_logs}"
-            # UBAH BARIS INI:
-            self.spawn_floating_text("RACUN!", 650, 520, arcade.color.PURPLE)
+            self.p2_log = effect_logs
+            self.spawn_floating_text("RACUN!", 600, 420, arcade.color.PURPLE)
 
         if self.player2.current_hp <= 0:
             self.manager.disable()
             self.window.show_view(GameOverView(self.player1, self.player2))
             return
 
-        self.enemy_turn()
+        self.enemy_delay_timer = 1.5
+
+    def on_update(self, delta_time: float):
+        for f_text in self.floating_texts:
+            f_text.update()
+        self.floating_texts = [f for f in self.floating_texts if not f.is_dead()]
+
+        if not self.is_player_turn and self.enemy_delay_timer > 0:
+            self.enemy_delay_timer -= delta_time
+            if self.enemy_delay_timer <= 0:
+                self.enemy_turn()
 
     def enemy_turn(self):
-        # MENGGUNAKAN STRATEGY PATTERN DARI AI
         if hasattr(self.player2, 'ai_strategy'):
             command, log_msg = self.player2.ai_strategy.decide_action(self.player2)
-            self.battle_log += f"\nMusuh {log_msg}"
+            # Tampilkan aksi musuh di sisi kanan, kosongkan sisi kiri
+            self.p2_log = log_msg.capitalize()
         else:
-            # Fallback jika karakter tidak punya AI
             command = BasicAttackCommand()
-            self.battle_log += f"\nMusuh menyerang!"
+            self.p2_log = "Menyerang!"
             
+        self.p1_log = ""
+        
         command.execute(self.player2, self.player1)
-        self.spawn_floating_text("BAM!", 150, 520, arcade.color.RED)
+        self.spawn_floating_text("BAM!", 200, 420, arcade.color.RED)
 
         if self.player1.current_hp <= 0:
             self.manager.disable()
             self.window.show_view(GameOverView(self.player2, self.player1))
         else:
             self.current_turn = self.player1
+            self.is_player_turn = True 
+            
+            # Jika ada efek yang mengenai pemain, tambahkan di log pemain
             effect_logs = self.player1.process_effects()
             if effect_logs:
-                self.battle_log = f"{effect_logs}\n\nGiliran Anda!"
+                self.p1_log = f"{effect_logs}\n\nGiliran Anda!"
+            else:
+                self.p1_log = "Giliran Anda!"
 
             if self.player1.current_hp <= 0:
                 self.manager.disable()
                 self.window.show_view(GameOverView(self.player2, self.player1))
-
-    def on_update(self, delta_time: float):
-        """Metode bawaan Arcade untuk mengelola pergerakan setiap frame"""
-        for f_text in self.floating_texts:
-            f_text.update()
-            
-        # Bersihkan animasi yang sudah hilang dari list agar tidak membebani memori
-        self.floating_texts = [f for f in self.floating_texts if not f.is_dead()]
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
     def on_draw(self):
         self.clear()
+        self.character_sprites.draw()
+
         arcade.Text(self.player1.name, x=50, y=510, color=arcade.color.WHITE, font_size=20, bold=True).draw()
         arcade.Text(self.player2.name, x=550, y=510, color=arcade.color.WHITE, font_size=20, bold=True).draw()
         self.p1_hp_bar.draw()
@@ -335,18 +375,25 @@ class BattleView(arcade.View):
         self.p2_hp_bar.draw()
         self.p2_mana_bar.draw()
         
+        # --- PERUBAHAN UI LOG DRAW ---
+        # Teks Pemain 1 (Kiri) di bawah sprite
         arcade.Text(
-            self.battle_log, x=self.window.width // 2, y=200, color=arcade.color.YELLOW, 
-            font_size=16, anchor_x="center", anchor_y="center", multiline=True, width=500, align="center"
+            self.p1_log, x=200, y=200, color=arcade.color.LIGHT_BLUE, 
+            font_size=14, anchor_x="center", anchor_y="top", multiline=True, width=280, align="center"
         ).draw()
         
-        # Gambar semua teks melayang yang aktif
+        # Teks Pemain 2 (Kanan) di bawah sprite
+        arcade.Text(
+            self.p2_log, x=600, y=200, color=arcade.color.LIGHT_RED_OCHRE, 
+            font_size=14, anchor_x="center", anchor_y="top", multiline=True, width=280, align="center"
+        ).draw()
+        
         for f_text in self.floating_texts:
             f_text.draw()
             
         self.manager.draw()
-
-        # ==========================================
+        
+# ==========================================
 # LAYAR RIWAYAT PERTANDINGAN (BARU)
 # ==========================================
 class HistoryView(arcade.View):
