@@ -36,3 +36,16 @@ class HistoryManager:
             json.dump(history, file, indent=4)
             
         print(f"Riwayat tersimpan: {winner_name} mengalahkan {loser_name}")
+
+        # Tambahkan di bawah metode save_match yang sudah ada di engine/history_manager.py
+
+    @staticmethod
+    def get_history():
+        """Membaca dan mengembalikan data riwayat pertandingan."""
+        if os.path.exists(HistoryManager.FILE_PATH):
+            try:
+                with open(HistoryManager.FILE_PATH, "r") as file:
+                    return json.load(file)
+            except json.JSONDecodeError:
+                return []
+        return []
