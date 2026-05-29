@@ -118,5 +118,41 @@
         "pemenang": "Tim Pemain",
         "kalah": "Tim Musuh",
         "sisa_hp_pemenang": 103
+    },
+    {
+        "waktu": "2026-05-29 12:38:27",
+        "pemenang": "Tim Musuh",
+        "kalah": "Tim Pemain",
+        "sisa_hp_pemenang": 56
+    },
+    {
+        "waktu": "2026-05-29 12:38:39",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 107
+    },
+    {
+        "waktu": "2026-05-29 12:42:47",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 13
+    },
+    {
+        "waktu": "2026-05-29 12:44:47",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 101
+    },
+    {
+        "waktu": "2026-05-29 12:44:56",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 117
+    },
+    {
+        "waktu": "2026-05-29 12:47:42",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 114
     }
 ]
