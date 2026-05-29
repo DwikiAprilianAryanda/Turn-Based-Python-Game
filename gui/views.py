@@ -76,154 +76,188 @@ class MainMenuView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 1.5 LAYAR GACHA EQUIPMENT (UPDATE ANIMASI ROULETTE)
+# LAYAR GACHA (UPDATE: ANIMASI PETI & REVEAL)
 # ==========================================
 class GachaView(arcade.View):
     def __init__(self):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
         
-        self.current_gold = SaveManager.get_gold()
+        # --- STATE ANIMASI GACHA ---
+        self.state = "IDLE"  # Fase: IDLE, SHAKING, FLASH, REVEAL
+        self.anim_timer = 0.0
+        self.time_elapsed = 0.0
         
-        # --- STATE ANIMASI ---
-        self.is_spinning = False
-        self.spin_timer = 0.0
-        self.spin_delay = 0.05       # Kecepatan ganti awal (sangat cepat)
-        self.spin_duration = 0.0
-        self.max_spin_duration = 3.0 # Animasi berputar selama 3 detik
-        self.final_item = None
-        self.final_rarity = None
+        self.pulled_item_name = ""
+        self.pulled_item_stats = ""
+        self.rarity_color = arcade.color.WHITE
+        self.chest_scale = 1.0
+        self.chest_shake_x = 0.0
+        self.flash_alpha = 0
         
-        from engine.gacha_system import GachaSystem
-        self.all_items = list(GachaSystem.ITEM_POOL.keys())
-        
-        # Variabel Teks Dinamis (Digambar manual di on_draw)
-        self.display_text = "Klik tombol di bawah untuk menarik Gacha!"
-        self.display_color = arcade.color.WHITE
+        self.build_ui()
 
-        # Label UI Tetap
-        self.title_label = arcade.gui.UILabel(text="🎲 GACHA EQUIPMENT 🎲", text_color=arcade.color.GOLD, font_size=28, bold=True)
-        self.gold_label = arcade.gui.UILabel(text=f"Uang Anda: 💰 {self.current_gold} Gold", text_color=arcade.color.YELLOW, font_size=16)
+    def build_ui(self):
+        self.manager.clear()
         
-        self.pull_btn = arcade.gui.UIFlatButton(text=f"Tarik 1x ({GachaSystem.COST_PER_PULL} Gold)", width=250)
-        self.pull_btn.on_click = self.on_pull_click
-        
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=250)
+        # Tombol kembali ke menu utama
+        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=100)
         back_btn.on_click = self.on_back_click
-
-        self.v_box.add(self.title_label)
-        self.v_box.add(self.gold_label)
+        anchor_tl = arcade.gui.UIAnchorLayout()
+        anchor_tl.add(child=back_btn, anchor_x="left", anchor_y="top", align_x=20, align_y=-20)
         
-        # Beri ruang kosong (UISpace) di tengah agar teks animasi punya tempat
-        self.v_box.add(arcade.gui.UISpace(height=60)) 
+        # Panel Gacha (Hanya tampil saat IDLE)
+        self.v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        title = arcade.gui.UILabel(text="GACHA EQUIPMENT", font_size=28, bold=True, text_color=arcade.color.GOLD)
         
-        self.v_box.add(self.pull_btn)
-        self.v_box.add(back_btn)
+        pull_btn = arcade.gui.UIFlatButton(text="✨ Tarik 1x (100 Gold)", width=200, height=50)
+        pull_btn.on_click = self.on_pull_click
+        
+        self.v_box.add(title)
+        self.v_box.add(pull_btn)
+        
+        anchor_center = arcade.gui.UIAnchorLayout()
+        anchor_center.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        
+        self.manager.add(anchor_tl)
+        self.manager.add(anchor_center)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
-
-    def get_color_for_rarity(self, rarity):
-        """Fungsi pembantu untuk mengembalikan warna berdasarkan rank"""
-        if rarity == "Mythic": return arcade.color.RED
-        elif rarity == "Legendary": return arcade.color.GOLD
-        elif rarity == "Rare": return arcade.color.LIGHT_BLUE
-        else: return arcade.color.LIGHT_GRAY
+    def get_rarity_color(self, rarity):
+        """Menentukan warna kilat dan teks murni berdasarkan label kelangkaan"""
+        if rarity == "Mythic":
+            return arcade.color.RED           # Mythic = Merah
+        elif rarity == "Legendary":
+            return arcade.color.GOLD          # Legendary = Emas
+        elif rarity == "Rare":
+            return arcade.color.LIGHT_GREEN   # Rare = Hijau
+        else:
+            return arcade.color.WHITE         # Common = Putih
 
     def on_pull_click(self, event):
-        # Cegah pemain spam klik saat animasi masih berjalan
-        if self.is_spinning: 
-            return 
-
         from engine.gacha_system import GachaSystem
+        from engine.save_manager import SaveManager
+
+        # 1. PULL ITEM MENGGUNAKAN FUNGSI BAWAAN GACHASYSTEM (Agar rate gacha % nya berfungsi)
+        pulled_name, pulled_rarity = GachaSystem.pull_item()
+        item_data = GachaSystem.ITEM_POOL[pulled_name]
         
-        if self.current_gold >= GachaSystem.COST_PER_PULL:
-            # 1. Potong uang
-            self.current_gold -= GachaSystem.COST_PER_PULL
-            SaveManager.add_gold(-GachaSystem.COST_PER_PULL)
-            self.gold_label.text = f"Uang Anda: 💰 {self.current_gold} Gold"
-            
-            # 2. Tentukan hasil akhir SECARA RAHASIA di belakang layar
-            self.final_item, self.final_rarity = GachaSystem.pull_item()
-            
-            # 3. Mulai Animasi!
-            self.is_spinning = True
-            self.spin_timer = 0.0
-            self.spin_delay = 0.05 # Reset ke kecepatan maksimal
-            self.spin_duration = 0.0
-            
-        else:
-            self.display_text = "❌ Uang Anda tidak cukup!"
-            self.display_color = arcade.color.CRIMSON
-
-    def on_update(self, delta_time: float):
-        """Fungsi ini dipanggil sekitar 60 kali per detik oleh mesin game"""
-        if self.is_spinning:
-            self.spin_timer += delta_time
-            self.spin_duration += delta_time
-
-            # Jika sudah waktunya mengganti teks visual (efek putaran)
-            if self.spin_timer >= self.spin_delay:
-                self.spin_timer = 0.0
-                
-                # Perlambat putaran perlahan (semakin lama semakin lambat)
-                self.spin_delay *= 1.15 
-
-                import random
-                from engine.gacha_system import GachaSystem
-                
-                # Tampilkan item acak sebagai ilusi visual
-                random_item = random.choice(self.all_items)
-                random_rarity = GachaSystem.ITEM_POOL[random_item]["rarity"]
-
-                self.display_text = f">  {random_item}  <"
-                self.display_color = self.get_color_for_rarity(random_rarity)
-
-            # Jika durasi animasi selesai (3 detik)
-            if self.spin_duration >= self.max_spin_duration:
-                self.is_spinning = False
-                
-                # Simpan hasil akhir ke tas
-                SaveManager.add_item_to_inventory(self.final_item)
-                
-                # Tampilkan hasil akhir yang sebenarnya
-                if self.final_rarity == "Mythic":
-                    self.display_text = f"🔮 MYTHIC! Anda mendapat {self.final_item}! 🔮"
-                elif self.final_rarity == "Legendary":
-                    self.display_text = f"🌟 JACKPOT! Anda mendapat {self.final_item}! 🌟"
-                elif self.final_rarity == "Rare":
-                    self.display_text = f"✨ Anda mendapat {self.final_item} (Rare)!"
-                else:
-                    self.display_text = f"Anda mendapat {self.final_item} (Common)."
-                    
-                self.display_color = self.get_color_for_rarity(self.final_rarity)
+        self.pulled_item_name = pulled_name
+        
+        # 2. Ambil deskripsi dan warna dari data
+        self.pulled_item_stats = item_data.get("desc", "")
+        self.rarity_color = self.get_rarity_color(pulled_rarity)
+        
+        # 3. Simpan item ke Inventory Permanen
+        SaveManager.add_equipment(self.pulled_item_name)
+        
+        # 4. Mulai Animasi Shaking!
+        self.manager.clear() # Sembunyikan UI
+        self.state = "SHAKING"
+        self.anim_timer = 2.0 
+        self.chest_scale = 1.0
 
     def on_back_click(self, event):
-        if not self.is_spinning: # Jangan izinkan kabur saat gacha berputar!
-            self.manager.disable()
-            self.window.show_view(MainMenuView())
+        # Kembali ke menu utama (Sesuaikan dengan nama kelas MainMenu Anda)
+        from gui.views import MainMenuView
+        self.window.show_view(MainMenuView())
+
+    def on_continue_click(self, event):
+        # Reset ke awal untuk gacha lagi
+        self.state = "IDLE"
+        self.build_ui()
+
+    def on_update(self, delta_time: float):
+        self.time_elapsed += delta_time
+        import math
+        
+        if self.state == "SHAKING":
+            self.anim_timer -= delta_time
+            
+            # Efek Getaran Peti (Semakin lama semakin kencang)
+            intensity = 2.0 - self.anim_timer
+            self.chest_shake_x = math.sin(self.time_elapsed * 50) * (5 * intensity)
+            
+            # Efek Peti Membesar perlahan sebelum meledak
+            self.chest_scale = 1.0 + (1.0 - (self.anim_timer / 2.0)) * 0.3
+            
+            if self.anim_timer <= 0:
+                self.state = "FLASH"
+                self.anim_timer = 0.5 # Durasi kilat layar
+                self.flash_alpha = 255
+                
+        elif self.state == "FLASH":
+            self.anim_timer -= delta_time
+            # Memudarkan efek kilat secara bertahap
+            self.flash_alpha = max(0, int((self.anim_timer / 0.5) * 255))
+            
+            if self.anim_timer <= 0:
+                self.state = "REVEAL"
+                
+                # Munculkan tombol Continue setelah animasi selesai
+                cont_btn = arcade.gui.UIFlatButton(text="Lanjutkan", width=150)
+                cont_btn.on_click = self.on_continue_click
+                anchor_bot = arcade.gui.UIAnchorLayout()
+                anchor_bot.add(child=cont_btn, anchor_x="center", anchor_y="bottom", align_y=50)
+                self.manager.add(anchor_bot)
 
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+        arcade.set_background_color(arcade.color.EERIE_BLACK)
+
+    # --- FUNGSI AMAN MENGGAMBAR KOTAK (COMPATIBLE DENGAN ARCADE 3.0) ---
+    def _draw_rect(self, center_x, center_y, width, height, color):
+        hw, hh = width / 2, height / 2
+        points = ((center_x - hw, center_y - hh), (center_x + hw, center_y - hh), 
+                  (center_x + hw, center_y + hh), (center_x - hw, center_y + hh))
+        arcade.draw_polygon_filled(points, color)
 
     def on_draw(self):
         self.clear()
+        sw, sh = self.window.width, self.window.height
+        cx, cy = sw / 2, sh / 2
+
+        # 1. GAMBAR LATAR BELAKANG / PETI
+        if self.state in ["SHAKING", "FLASH"]:
+            # Gambar "Peti" sementara (Kotak Emas) bergetar
+            chest_width = 100 * self.chest_scale
+            chest_height = 80 * self.chest_scale
+            self._draw_rect(cx + self.chest_shake_x, cy, chest_width, chest_height, arcade.color.GOLDENROD)
+            self._draw_rect(cx + self.chest_shake_x, cy + 10, chest_width, 10, arcade.color.DARK_GOLDENROD) # Detail penutup peti
+            
+            # Teks indikator
+            arcade.draw_text("Membuka Peti...", cx, cy - 80, arcade.color.WHITE, 14, anchor_x="center")
+
+        # 2. EFEK REVEAL (ITEM MUNCUL)
+        elif self.state == "REVEAL":
+            import math
+            # Gambar Sinar Latar Belakang Berputar (Pemanis Visual)
+            ray_length = 400
+            ray_count = 12
+            for i in range(ray_count):
+                angle = self.time_elapsed + (i * (2 * math.pi / ray_count))
+                end_x = cx + math.cos(angle) * ray_length
+                end_y = cy + math.sin(angle) * ray_length
+                # Menggambar garis sinar dengan warna Rarity yang agak transparan
+                ray_color = (*self.rarity_color[:3], 100) 
+                arcade.draw_line(cx, cy, end_x, end_y, ray_color, 40)
+
+            # Gambar Kotak Item
+            self._draw_rect(cx, cy, 300, 200, arcade.color.DARK_SLATE_GRAY)
+            self._draw_rect(cx, cy, 290, 190, arcade.color.BLACK) # Inner Border
+            
+            # Teks Item
+            arcade.draw_text("SELAMAT! ANDA MENDAPATKAN:", cx, cy + 50, arcade.color.WHITE, 12, anchor_x="center")
+            arcade.draw_text(self.pulled_item_name, cx, cy + 10, self.rarity_color, 24, bold=True, anchor_x="center")
+            arcade.draw_text(self.pulled_item_stats, cx, cy - 30, arcade.color.LIGHT_GREEN, 14, anchor_x="center")
+
+        # 3. GAMBAR KILAT LAYAR (Paling atas)
+        if self.state == "FLASH" and self.flash_alpha > 0:
+            flash_color = (*self.rarity_color[:3], self.flash_alpha)
+            points = ((0, 0), (sw, 0), (sw, sh), (0, sh))
+            arcade.draw_polygon_filled(points, flash_color)
+
+        # 4. GAMBAR UI MANAGER (Tombol-tombol)
         self.manager.draw()
-        
-        # Gambar teks dinamis tepat di tengah layar (menumpuk di atas ruang kosong v_box)
-        arcade.Text(
-            self.display_text,
-            x=self.window.width / 2,
-            y=self.window.height / 2,
-            color=self.display_color,
-            font_size=18,
-            bold=True,
-            anchor_x="center",
-            anchor_y="center"
-        ).draw()
 
 # ==========================================
 # 2. LAYAR PILIH MODE PERTANDINGAN
@@ -962,7 +996,7 @@ class InventoryView(arcade.View):
                 
                 color = arcade.color.WHITE
                 rarity = item_data["rarity"]
-                if rarity == "Mythic": color = arcade.color.PURPLE
+                if rarity == "Mythic": color = arcade.color.RED
                 elif rarity == "Legendary": color = arcade.color.GOLD
                 elif rarity == "Rare": color = arcade.color.LIGHT_BLUE
                 

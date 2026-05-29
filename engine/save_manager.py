@@ -82,3 +82,29 @@ class SaveManager:
     @staticmethod
     def get_inventory():
         return SaveManager.load_data().get("inventory", [])
+    
+    @staticmethod
+    def add_equipment(item_name: str):
+        """Menambahkan item baru ke dalam inventory pemain di file JSON."""
+        import json
+        import os
+        
+        file_path = "save_data.json" # Sesuaikan dengan nama file save Anda
+        
+        # 1. Baca data lama
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                data = json.load(f)
+        else:
+            data = {}
+            
+        # 2. Buat list inventory jika belum pernah ada
+        if "inventory" not in data:
+            data["inventory"] = []
+            
+        # 3. Masukkan item baru
+        data["inventory"].append(item_name)
+        
+        # 4. Tulis kembali ke file
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)

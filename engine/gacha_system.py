@@ -23,8 +23,8 @@ class GachaSystem:
     def pull_item():
         chance = random.randint(1, 100)
         
-        if chance <= 3: target_rarity = "Mythic"
-        elif chance <= 8: target_rarity = "Legendary"
+        if chance <= 2: target_rarity = "Mythic"
+        elif chance <= 5: target_rarity = "Legendary"
         elif chance <= 30: target_rarity = "Rare"
         else: target_rarity = "Common"
             
