@@ -74,7 +74,7 @@ class MainMenuView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 1.5 LAYAR GACHA EQUIPMENT (BARU)
+# 1.5 LAYAR GACHA EQUIPMENT (UPDATE ANIMASI ROULETTE)
 # ==========================================
 class GachaView(arcade.View):
     def __init__(self):
@@ -84,16 +84,27 @@ class GachaView(arcade.View):
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
         
         self.current_gold = SaveManager.get_gold()
-        self.pull_result_text = "Klik tombol di bawah untuk menarik Gacha!"
-        self.result_color = arcade.color.WHITE
+        
+        # --- STATE ANIMASI ---
+        self.is_spinning = False
+        self.spin_timer = 0.0
+        self.spin_delay = 0.05       # Kecepatan ganti awal (sangat cepat)
+        self.spin_duration = 0.0
+        self.max_spin_duration = 3.0 # Animasi berputar selama 3 detik
+        self.final_item = None
+        self.final_rarity = None
+        
+        from engine.gacha_system import GachaSystem
+        self.all_items = list(GachaSystem.ITEM_POOL.keys())
+        
+        # Variabel Teks Dinamis (Digambar manual di on_draw)
+        self.display_text = "Klik tombol di bawah untuk menarik Gacha!"
+        self.display_color = arcade.color.WHITE
 
-        # Label Informasi UI
+        # Label UI Tetap
         self.title_label = arcade.gui.UILabel(text="🎲 GACHA EQUIPMENT 🎲", text_color=arcade.color.GOLD, font_size=28, bold=True)
         self.gold_label = arcade.gui.UILabel(text=f"Uang Anda: 💰 {self.current_gold} Gold", text_color=arcade.color.YELLOW, font_size=16)
         
-        # Teks Hasil Tarikan (Dinamis)
-        self.result_label = arcade.gui.UILabel(text=self.pull_result_text, text_color=self.result_color, font_size=18, bold=True)
-
         self.pull_btn = arcade.gui.UIFlatButton(text=f"Tarik 1x ({GachaSystem.COST_PER_PULL} Gold)", width=250)
         self.pull_btn.on_click = self.on_pull_click
         
@@ -102,9 +113,10 @@ class GachaView(arcade.View):
 
         self.v_box.add(self.title_label)
         self.v_box.add(self.gold_label)
-        self.v_box.add(arcade.gui.UILabel(text="", height=20)) # Spasi
-        self.v_box.add(self.result_label)
-        self.v_box.add(arcade.gui.UILabel(text="", height=20)) # Spasi
+        
+        # Beri ruang kosong (UISpace) di tengah agar teks animasi punya tempat
+        self.v_box.add(arcade.gui.UISpace(height=60)) 
+        
         self.v_box.add(self.pull_btn)
         self.v_box.add(back_btn)
 
@@ -112,37 +124,85 @@ class GachaView(arcade.View):
         anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_layout)
 
+    def get_color_for_rarity(self, rarity):
+        """Fungsi pembantu untuk mengembalikan warna berdasarkan rank"""
+        if rarity == "Mythic": return arcade.color.RED
+        elif rarity == "Legendary": return arcade.color.GOLD
+        elif rarity == "Rare": return arcade.color.LIGHT_BLUE
+        else: return arcade.color.LIGHT_GRAY
+
     def on_pull_click(self, event):
-        # 1. Cek apakah uang cukup
+        # Cegah pemain spam klik saat animasi masih berjalan
+        if self.is_spinning: 
+            return 
+
+        from engine.gacha_system import GachaSystem
+        
         if self.current_gold >= GachaSystem.COST_PER_PULL:
-            # Potong uang
+            # 1. Potong uang
             self.current_gold -= GachaSystem.COST_PER_PULL
-            SaveManager.add_gold(-GachaSystem.COST_PER_PULL) # Minus uang di save data
-            
-            # 2. Lakukan Tarikan Gacha
-            item_name, rarity = GachaSystem.pull_item()
-            
-            # 3. Simpan item ke tas (Inventory)
-            SaveManager.add_item_to_inventory(item_name)
-            
-            # 4. Beri teks sesuai tingkat kelangkaan (Tanpa ganti warna agar tidak error)
-            if rarity == "Legendary":
-                self.pull_result_text = f"🌟 JACKPOT! Anda mendapat {item_name} (Legendary)!"
-            elif rarity == "Rare":
-                self.pull_result_text = f"✨ Anda mendapat {item_name} (Rare)!"
-            else:
-                self.pull_result_text = f"Anda mendapat {item_name} (Common)."
-                
-            # Update Tampilan UI (Hanya teksnya saja)
+            SaveManager.add_gold(-GachaSystem.COST_PER_PULL)
             self.gold_label.text = f"Uang Anda: 💰 {self.current_gold} Gold"
-            self.result_label.text = self.pull_result_text
+            
+            # 2. Tentukan hasil akhir SECARA RAHASIA di belakang layar
+            self.final_item, self.final_rarity = GachaSystem.pull_item()
+            
+            # 3. Mulai Animasi!
+            self.is_spinning = True
+            self.spin_timer = 0.0
+            self.spin_delay = 0.05 # Reset ke kecepatan maksimal
+            self.spin_duration = 0.0
             
         else:
-            self.result_label.text = "❌ Uang Anda tidak cukup untuk menarik Gacha!"
+            self.display_text = "❌ Uang Anda tidak cukup!"
+            self.display_color = arcade.color.CRIMSON
+
+    def on_update(self, delta_time: float):
+        """Fungsi ini dipanggil sekitar 60 kali per detik oleh mesin game"""
+        if self.is_spinning:
+            self.spin_timer += delta_time
+            self.spin_duration += delta_time
+
+            # Jika sudah waktunya mengganti teks visual (efek putaran)
+            if self.spin_timer >= self.spin_delay:
+                self.spin_timer = 0.0
+                
+                # Perlambat putaran perlahan (semakin lama semakin lambat)
+                self.spin_delay *= 1.15 
+
+                import random
+                from engine.gacha_system import GachaSystem
+                
+                # Tampilkan item acak sebagai ilusi visual
+                random_item = random.choice(self.all_items)
+                random_rarity = GachaSystem.ITEM_POOL[random_item]["rarity"]
+
+                self.display_text = f">  {random_item}  <"
+                self.display_color = self.get_color_for_rarity(random_rarity)
+
+            # Jika durasi animasi selesai (3 detik)
+            if self.spin_duration >= self.max_spin_duration:
+                self.is_spinning = False
+                
+                # Simpan hasil akhir ke tas
+                SaveManager.add_item_to_inventory(self.final_item)
+                
+                # Tampilkan hasil akhir yang sebenarnya
+                if self.final_rarity == "Mythic":
+                    self.display_text = f"🔮 MYTHIC! Anda mendapat {self.final_item}! 🔮"
+                elif self.final_rarity == "Legendary":
+                    self.display_text = f"🌟 JACKPOT! Anda mendapat {self.final_item}! 🌟"
+                elif self.final_rarity == "Rare":
+                    self.display_text = f"✨ Anda mendapat {self.final_item} (Rare)!"
+                else:
+                    self.display_text = f"Anda mendapat {self.final_item} (Common)."
+                    
+                self.display_color = self.get_color_for_rarity(self.final_rarity)
 
     def on_back_click(self, event):
-        self.manager.disable()
-        self.window.show_view(MainMenuView())
+        if not self.is_spinning: # Jangan izinkan kabur saat gacha berputar!
+            self.manager.disable()
+            self.window.show_view(MainMenuView())
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
@@ -150,6 +210,18 @@ class GachaView(arcade.View):
     def on_draw(self):
         self.clear()
         self.manager.draw()
+        
+        # Gambar teks dinamis tepat di tengah layar (menumpuk di atas ruang kosong v_box)
+        arcade.Text(
+            self.display_text,
+            x=self.window.width / 2,
+            y=self.window.height / 2,
+            color=self.display_color,
+            font_size=18,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center"
+        ).draw()
 
 # ==========================================
 # 2. LAYAR PILIH MODE PERTANDINGAN
@@ -630,7 +702,7 @@ class InventoryView(arcade.View):
                 
                 # Teks Detail
                 color = arcade.color.WHITE
-                if item_data["rarity"] == "Mythic": color = arcade.color.PURPLE
+                if item_data["rarity"] == "Mythic": color = arcade.color.RED
                 elif item_data["rarity"] == "Legendary": color = arcade.color.GOLD
                 elif item_data["rarity"] == "Rare": color = arcade.color.LIGHT_BLUE
                 
