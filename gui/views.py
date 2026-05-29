@@ -332,7 +332,7 @@ class DifficultySelectionView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# 4. LAYAR PEMILIHAN KARAKTER (UPDATE: FITUR BATAL/UNDO)
+# 4. LAYAR PEMILIHAN KARAKTER (UPDATE: UI SINERGI ELEMEN)
 # ==========================================
 class CharacterSelectionView(arcade.View):
     def __init__(self, party_size, difficulty):
@@ -343,6 +343,14 @@ class CharacterSelectionView(arcade.View):
         self.manager.enable()
 
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
+        
+        # Peta Elemen Karakter untuk UI
+        self.element_map = {
+            "Emperor": "🔴", "Mage": "🔴",       # Api
+            "Gladiator": "🔵", "Knight": "🔵",     # Air
+            "Assassin": "🌿", "Valkyrie": "🌿"    # Daun
+        }
+
         self.player_party = []
         self.enemy_party = []
 
@@ -351,9 +359,25 @@ class CharacterSelectionView(arcade.View):
 
         self.build_ui()
 
+    def get_synergy(self, party):
+        """Mengecek sinergi tim berdasarkan elemen anggota"""
+        if self.party_size != 3:
+            return "Mode ini tidak mendukung sinergi", arcade.color.GRAY
+        if len(party) < 3:
+            return "Butuh 3 Karakter", arcade.color.DARK_GRAY
+            
+        elements = [self.element_map[char] for char in party]
+        counts = {e: elements.count(e) for e in set(elements)}
+        
+        if counts.get("🔴", 0) == 3: return "🔥 INFERNO (+20% ATK)", arcade.color.RED
+        if counts.get("🔵", 0) == 3: return "🌊 OCEANIC (Regen 5% HP)", arcade.color.LIGHT_BLUE
+        if counts.get("🌿", 0) == 3: return "🍃 NATURE (+20% DEF)", arcade.color.LIGHT_GREEN
+        if len(counts) == 3: return "✨ TRINITY (Kebal Debuff)", arcade.color.GOLD
+        
+        return "❌ Tidak Ada Sinergi", arcade.color.LIGHT_GRAY
+
     def build_ui(self):
         self.manager.clear()
-
         main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=40)
 
         # ========================================
@@ -367,7 +391,9 @@ class CharacterSelectionView(arcade.View):
         p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
 
         for i, char in enumerate(self.available_characters):
-            btn = arcade.gui.UIFlatButton(text=char[:3].upper(), width=70, height=50)
+            # UBAH: Tambahkan Icon Elemen di tombol
+            element_icon = self.element_map[char]
+            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {element_icon}", width=80, height=50)
             btn.on_click = self.make_select_action(char, is_player=True)
             if i % 2 == 0: p_col1.add(btn)
             else: p_col2.add(btn)
@@ -378,18 +404,22 @@ class CharacterSelectionView(arcade.View):
 
         left_panel.add(arcade.gui.UILabel(text="", height=10))
         
-        # Area Gambar Portrait Pemain & Tombol Batal
         if self.last_player_char:
             left_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_BLUE))
-            left_panel.add(arcade.gui.UILabel(text=self.last_player_char, font_size=16, bold=True, text_color=arcade.color.WHITE))
-            
-            # FITUR BARU: Tombol Batal untuk Pemain
+            char_display = f"{self.element_map[self.last_player_char]} {self.last_player_char}"
+            left_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
             undo_p_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150)
             undo_p_btn.on_click = self.on_undo_player
             left_panel.add(undo_p_btn)
         else:
             left_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_GRAY))
-            left_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY, bold=True))
+            left_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
+
+        # --- TAMPILAN SINERGI PEMAIN ---
+        left_panel.add(arcade.gui.UILabel(text="", height=10))
+        syn_name_p, syn_color_p = self.get_synergy(self.player_party)
+        left_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
+        left_panel.add(arcade.gui.UILabel(text=syn_name_p, font_size=14, bold=True, text_color=syn_color_p))
 
 
         # ========================================
@@ -426,7 +456,9 @@ class CharacterSelectionView(arcade.View):
         e_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
 
         for i, char in enumerate(self.available_characters):
-            btn = arcade.gui.UIFlatButton(text=char[:3].upper(), width=70, height=50)
+            # UBAH: Tambahkan Icon Elemen di tombol musuh juga
+            element_icon = self.element_map[char]
+            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {element_icon}", width=80, height=50)
             btn.on_click = self.make_select_action(char, is_player=False)
             if i % 2 == 0: e_col1.add(btn)
             else: e_col2.add(btn)
@@ -437,18 +469,22 @@ class CharacterSelectionView(arcade.View):
 
         right_panel.add(arcade.gui.UILabel(text="", height=10))
         
-        # Area Gambar Portrait Musuh & Tombol Batal
         if self.last_enemy_char:
             right_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_RED))
-            right_panel.add(arcade.gui.UILabel(text=self.last_enemy_char, font_size=16, bold=True, text_color=arcade.color.WHITE))
-            
-            # FITUR BARU: Tombol Batal untuk Musuh
+            char_display = f"{self.element_map[self.last_enemy_char]} {self.last_enemy_char}"
+            right_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
             undo_e_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150)
             undo_e_btn.on_click = self.on_undo_enemy
             right_panel.add(undo_e_btn)
         else:
             right_panel.add(arcade.gui.UISpace(width=150, height=200, color=arcade.color.DARK_GRAY))
-            right_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY, bold=True))
+            right_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
+
+        # --- TAMPILAN SINERGI MUSUH ---
+        right_panel.add(arcade.gui.UILabel(text="", height=10))
+        syn_name_e, syn_color_e = self.get_synergy(self.enemy_party)
+        right_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
+        right_panel.add(arcade.gui.UILabel(text=syn_name_e, font_size=14, bold=True, text_color=syn_color_e))
 
 
         main_layout.add(left_panel)
@@ -467,23 +503,18 @@ class CharacterSelectionView(arcade.View):
             elif not is_player and len(self.enemy_party) < self.party_size:
                 self.enemy_party.append(char_name)
                 self.last_enemy_char = char_name
-                
             self.build_ui() 
         return action
 
-    # --- FUNGSI BARU: UNDO PEMAIN ---
     def on_undo_player(self, event):
         if self.player_party:
-            self.player_party.pop() # Hapus karakter terakhir
-            # Update gambar portrait ke karakter sebelumnya (jika masih ada sisa)
+            self.player_party.pop() 
             self.last_player_char = self.player_party[-1] if self.player_party else None
             self.build_ui()
 
-    # --- FUNGSI BARU: UNDO MUSUH ---
     def on_undo_enemy(self, event):
         if self.enemy_party:
-            self.enemy_party.pop() # Hapus karakter terakhir
-            # Update gambar portrait ke karakter sebelumnya (jika masih ada sisa)
+            self.enemy_party.pop() 
             self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
             self.build_ui()
 
@@ -500,7 +531,12 @@ class CharacterSelectionView(arcade.View):
 
     def on_ready(self, event):
         self.manager.disable()
+        # Menambahkan data Sinergi untuk dibawa ke Arena nanti
+        syn_p, _ = self.get_synergy(self.player_party)
+        syn_e, _ = self.get_synergy(self.enemy_party)
+        
         from gui.views import EquipmentSelectionView
+        # Kita lemparkan saja dulu ke EquipmentView. Nanti kita proses mekaniknya di BattleView.
         self.window.show_view(EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty))
 
     def on_back_click(self, event):
@@ -660,9 +696,31 @@ class EquipmentSelectionView(arcade.View):
     def on_start_battle(self, event):
         self.manager.disable()
         from models.equipment import Equipment 
+        from models.synergy import SynergyBuff # IMPORT DECORATOR BARU KITA
         from engine.gacha_system import GachaSystem
         
-        # 1. SETUP TIM PEMAIN (Terapkan Equipment Pilihan)
+        # Fungsi pembantu untuk menentukan nama sinergi
+        element_map = {
+            "Emperor": "🔴", "Mage": "🔴",
+            "Gladiator": "🔵", "Knight": "🔵",
+            "Assassin": "🌿", "Valkyrie": "🌿"
+        }
+        
+        def get_synergy_type(party):
+            if len(party) < 3: return None
+            elements = [element_map[char] for char in party]
+            counts = {e: elements.count(e) for e in set(elements)}
+            if counts.get("🔴", 0) == 3: return "INFERNO"
+            if counts.get("🔵", 0) == 3: return "OCEANIC"
+            if counts.get("🌿", 0) == 3: return "NATURE"
+            if len(counts) == 3: return "TRINITY"
+            return None
+
+        # Hitung sinergi kedua tim
+        p_synergy = get_synergy_type(self.player_types)
+        e_synergy = get_synergy_type(self.enemy_types)
+        
+        # 1. SETUP TIM PEMAIN 
         player_party = []
         player_levels = []
         for i, char_type in enumerate(self.player_types):
@@ -671,19 +729,22 @@ class EquipmentSelectionView(arcade.View):
             char.apply_scaling(level=level, stat_multiplier=1.0)
             player_levels.append(level)
             
-            # Ambil item dari data state, bukan lagi dari index putaran
+            # LAPISAN 1: Bungkus karakter dengan Equipment Gacha
             eq_name = self.equipped_items[i]
             if eq_name != "Tangan Kosong":
                 eq_data = GachaSystem.ITEM_POOL[eq_name]
                 char = Equipment(char, item_name=eq_name, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
+            
+            # LAPISAN 2: Bungkus lagi dengan Sinergi (Hanya jika aktif)
+            if p_synergy:
+                char = SynergyBuff(char, synergy_type=p_synergy)
                     
             player_party.append(char)
             
-        # 2. SETUP TIM MUSUH (Otomatis & Random)
+        # 2. SETUP TIM MUSUH
         avg_level = max(1, sum(player_levels) // len(player_levels))
         diff_settings = DIFFICULTY_SETTINGS[self.difficulty]
         enemy_level = min(avg_level, diff_settings["enemy_cap"])
-        
         all_items = list(GachaSystem.ITEM_POOL.keys())
         
         enemy_party = []
@@ -694,7 +755,13 @@ class EquipmentSelectionView(arcade.View):
             import random
             random_eq = random.choice(all_items)
             eq_data = GachaSystem.ITEM_POOL[random_eq]
+            
+            # LAPISAN 1: Musuh pakai Equipment acak
             char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
+            
+            # LAPISAN 2: Sinergi Musuh (Awas kalau musuh dapat Inferno!)
+            if e_synergy:
+                char = SynergyBuff(char, synergy_type=e_synergy)
                 
             enemy_party.append(char)
 
