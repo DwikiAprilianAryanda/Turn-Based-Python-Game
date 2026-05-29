@@ -1,0 +1,14 @@
+[
+    {
+        "waktu": "2026-05-29 08:33:17",
+        "pemenang": "Qin Shi Huang",
+        "kalah": "Spartacus (Musuh)",
+        "sisa_hp_pemenang": 50
+    },
+    {
+        "waktu": "2026-05-29 08:33:41",
+        "pemenang": "Qin Shi Huang (Musuh)",
+        "kalah": "Spartacus",
+        "sisa_hp_pemenang": 45
+    }
+]

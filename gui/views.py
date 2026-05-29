@@ -7,6 +7,7 @@ from engine.commands import BasicAttackCommand, SpecialSkillCommand, UseItemComm
 from models.item import HealthPotion
 from engine.factory import CharacterFactory 
 from gui.widgets import FloatingText
+from engine.history_manager import HistoryManager
 
 # ==========================================
 # 1. LAYAR MAIN MENU
@@ -137,44 +138,40 @@ class CharacterSelectionView(arcade.View):
 # 2. LAYAR GAME OVER
 # ==========================================
 class GameOverView(arcade.View):
-    def __init__(self, winner_name: str):
+    def __init__(self, winner: Character, loser: Character):
         super().__init__()
-        self.winner_name = winner_name
+        self.winner = winner
+        self.loser = loser
         
-        # Setup UI Manager
+        # --- EKSEKUSI PENYIMPANAN DATA DI SINI ---
+        HistoryManager.save_match(self.winner.name, self.loser.name, self.winner.current_hp)
+        
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
 
-        # BARIS INI YANG KEMUNGKINAN HILANG: Membuat kotak vertikal
         self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
-        # Membuat teks pemenang
         winner_label = arcade.gui.UILabel(
-            text=f"🏆 {self.winner_name} MENANG! 🏆",
+            text=f"🏆 {self.winner.name} MENANG! 🏆",
             text_color=arcade.color.LIGHT_GREEN,
             font_size=30,
             bold=True
         )
         
-        # Membuat tombol kembali ke menu
         menu_button = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=200)
         menu_button.on_click = self.on_menu_click
 
-        # Memasukkan elemen ke dalam kotak vertikal
         self.v_box.add(winner_label)
         self.v_box.add(menu_button)
 
-        # Menempatkan kotak vertikal ke tengah layar
         anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(
-            child=self.v_box,
-            anchor_x="center",
-            anchor_y="center"
-        )
+        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_layout)
 
     def on_menu_click(self, event):
         self.manager.disable()
+        # Gunakan import lokal untuk menghindari error Circular Import
+        from gui.views import MainMenuView 
         menu_view = MainMenuView()
         self.window.show_view(menu_view)
 
@@ -266,7 +263,7 @@ class BattleView(arcade.View):
     def check_game_state(self):
         if self.player2.current_hp <= 0:
             self.manager.disable()
-            self.window.show_view(GameOverView(self.player1.name))
+            self.window.show_view(GameOverView(self.player1, self.player2))
             return
 
         self.current_turn = self.player2
@@ -278,7 +275,7 @@ class BattleView(arcade.View):
 
         if self.player2.current_hp <= 0:
             self.manager.disable()
-            self.window.show_view(GameOverView(self.player1.name))
+            self.window.show_view(GameOverView(self.player1, self.player2))
             return
 
         self.enemy_turn()
@@ -298,7 +295,7 @@ class BattleView(arcade.View):
 
         if self.player1.current_hp <= 0:
             self.manager.disable()
-            self.window.show_view(GameOverView(self.player2.name))
+            self.window.show_view(GameOverView(self.player2, self.player1))
         else:
             self.current_turn = self.player1
             effect_logs = self.player1.process_effects()
@@ -307,7 +304,7 @@ class BattleView(arcade.View):
 
             if self.player1.current_hp <= 0:
                 self.manager.disable()
-                self.window.show_view(GameOverView(self.player2.name))
+                self.window.show_view(GameOverView(self.player2, self.player1))
 
     def on_update(self, delta_time: float):
         """Metode bawaan Arcade untuk mengelola pergerakan setiap frame"""
