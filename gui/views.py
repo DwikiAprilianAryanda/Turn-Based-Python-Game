@@ -440,7 +440,7 @@ class CharacterSelectionView(arcade.View):
 
 
         # ========================================
-        # PANEL TENGAH: KONTROL
+        # PANEL TENGAH: KONTROL (UPDATE INFO ELEMEN)
         # ========================================
         center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
         center_panel.add(arcade.gui.UILabel(text="VS", font_size=36, bold=True, text_color=arcade.color.CRIMSON))
@@ -448,6 +448,15 @@ class CharacterSelectionView(arcade.View):
         rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM", width=150)
         rand_btn.on_click = self.on_random
         center_panel.add(rand_btn)
+
+        # --- INFO KELEMAHAN ELEMEN ---
+        element_info = arcade.gui.UIBoxLayout(vertical=True, space_between=2)
+        element_info.add(arcade.gui.UILabel(text="Rantai Elemen:", font_size=12, text_color=arcade.color.WHITE))
+        element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun", font_size=12, bold=True))
+        element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air", font_size=12, text_color=arcade.color.LIGHT_GREEN, bold=True))
+        element_info.add(arcade.gui.UILabel(text="🔵 Air > 🔴 Api", font_size=12, text_color=arcade.color.LIGHT_BLUE, bold=True))
+        center_panel.add(element_info)
+        # ----------------------------
 
         if len(self.player_party) == self.party_size and len(self.enemy_party) == self.party_size:
             ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=150)
@@ -1044,21 +1053,20 @@ class BattleView(arcade.View):
         self.manager.clear()
         
         # ==========================================
-        # 1. PANEL ROSTER PEMAIN (KIRI) - ALA NARUTO STORM
+        # 1. PANEL ROSTER PEMAIN (KIRI)
         # ==========================================
         left_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
         for i, char in enumerate(self.player_party):
-            # Tentukan status karakter
             if char.current_hp <= 0:
                 text = f"💀 {char.name[:6]}..\nDEAD"
-                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) # Tombol mati (tidak bisa diklik)
+                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) 
             elif i == self.p1_idx:
                 text = f"▶️ {char.name[:6]}..\nAktif"
-                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) # Tombol aktif (tidak usah diklik)
+                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) 
             else:
                 text = f"🔄 {char.name[:6]}..\nHP: {int(char.current_hp)}"
                 btn = arcade.gui.UIFlatButton(text=text, width=120, height=60)
-                btn.on_click = self.make_swap_action(i) # Tombol Swap
+                btn.on_click = self.make_swap_action(i) 
                 
             left_box.add(btn)
             
@@ -1067,7 +1075,7 @@ class BattleView(arcade.View):
         self.manager.add(anchor_left)
 
         # ==========================================
-        # 2. PANEL ROSTER MUSUH (KANAN) - INFO SAJA
+        # 2. PANEL ROSTER MUSUH (KANAN) 
         # ==========================================
         right_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
         for i, char in enumerate(self.enemy_party):
@@ -1170,6 +1178,22 @@ class BattleView(arcade.View):
                 adjusted_y += 30
         self.floating_texts.append(FloatingText(text, x, adjusted_y, color))
 
+    def check_and_spawn_element_text(self, attacker, target, base_x, base_y):
+        """Mengecek elemen lalu memunculkan teks indikator kelemahan"""
+        if not attacker or not target: return
+        atk_el = attacker.element
+        def_el = target.element
+        
+        if (atk_el == "Api" and def_el == "Daun") or \
+           (atk_el == "Daun" and def_el == "Air") or \
+           (atk_el == "Air" and def_el == "Api"):
+            self.spawn_floating_text("WEAKNESS!", base_x, base_y + 40, arcade.color.ORANGE)
+            
+        elif (atk_el == "Api" and def_el == "Air") or \
+             (atk_el == "Air" and def_el == "Daun") or \
+             (atk_el == "Daun" and def_el == "Api"):
+            self.spawn_floating_text("RESIST!", base_x, base_y + 40, arcade.color.GRAY)
+
     def handle_death(self) -> bool:
         # MUSUH MATI (Cari musuh yang masih hidup)
         if self.p2_active.current_hp <= 0:
@@ -1224,11 +1248,13 @@ class BattleView(arcade.View):
             elif status == "CRIT":
                 self.p1_log = "CRITICAL HIT!" + passive_msg
                 self.spawn_floating_text("CRITICAL!", self.p2_base_x, self.base_y, arcade.color.GOLD)
+                self.check_and_spawn_element_text(self.p1_active, self.p2_active, self.p2_base_x, self.base_y) # <--- TAMBAHKAN DISINI
                 self.shake_timer = 0.3
                 self.trigger_flash(arcade.color.WHITE)
             else:
                 self.p1_log = "Melancarkan Basic Attack!" + passive_msg
                 self.spawn_floating_text("BAM!", self.p2_base_x, self.base_y, arcade.color.RED)
+                self.check_and_spawn_element_text(self.p1_active, self.p2_active, self.p2_base_x, self.base_y) # <--- TAMBAHKAN DISINI
             
             self.check_game_state()
             self.build_ui()

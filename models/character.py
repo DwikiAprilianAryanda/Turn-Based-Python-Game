@@ -74,13 +74,38 @@ class Emperor(Character):
     def __init__(self, name="Emperor"):
         super().__init__(name, 120, 15, 10, 12, "Api")
         
+    # UPDATE FORMULA: Kelemahan Elemen (Batu-Gunting-Kertas)
     def take_damage(self, amount, attacker=None):
-        dmg = super().take_damage(amount, attacker)
-        if self.current_hp > 0 and self.current_hp < (self._max_hp * 0.5) and attacker:
-            reflect = max(1, int(dmg * 0.3))
-            attacker.current_hp -= reflect
-            self.passive_logs += f"[Pantulan DMG: {reflect}] "
-        return dmg
+        if self.is_invincible:
+            self.passive_logs += "[Kebal DMG!] "
+            return 0
+            
+        # 1. Kalkulasi Elemen (Multiplier)
+        multiplier = 1.0
+        if attacker:
+            atk_el = attacker.element
+            def_el = self.element
+            
+            # Cek Kelemahan (Weakness) -> +50% Damage
+            if (atk_el == "Api" and def_el == "Daun") or \
+               (atk_el == "Daun" and def_el == "Air") or \
+               (atk_el == "Air" and def_el == "Api"):
+                multiplier = 1.5
+            
+            # Cek Resistensi (Resist) -> -50% Damage
+            elif (atk_el == "Api" and def_el == "Air") or \
+                 (atk_el == "Air" and def_el == "Daun") or \
+                 (atk_el == "Daun" and def_el == "Api"):
+                multiplier = 0.5
+                
+        modified_amount = amount * multiplier
+
+        # 2. Kalkulasi Defense (Minimal 15% menembus pertahanan)
+        min_damage = max(1, int(modified_amount * 0.15))
+        actual_damage = max(min_damage, int(modified_amount - self.defense))
+        
+        self.current_hp = max(0, self.current_hp - actual_damage)
+        return actual_damage
 
     def use_special_skill(self, target):
         self.current_mana -= 20
