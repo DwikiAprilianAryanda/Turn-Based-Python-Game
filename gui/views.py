@@ -409,7 +409,7 @@ class CharacterSelectionView(arcade.View):
             "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
             "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
             "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
-            "Knight": {"stats": "HP: 180 | ATK: 10 | DEF: 20", "role": "Pure Tank", "passive": "Aegis Aura (+15% DEF untuk seluruh Tim)", "ulti": "Holy Judgement (DMG dihitung dari 2x DEF)"},
+            "Knight": {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank", "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)", "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
             "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
         }
 
@@ -1603,7 +1603,7 @@ class EndlessCharacterSelectionView(arcade.View):
             "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
             "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
             "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
-            "Knight": {"stats": "HP: 180 | ATK: 10 | DEF: 20", "role": "Pure Tank", "passive": "Aegis Aura (+15% DEF untuk seluruh Tim)", "ulti": "Holy Judgement (DMG dihitung dari 2x DEF)"},
+            "Knight": {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank", "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)", "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
             "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
         }
 

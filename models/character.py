@@ -212,11 +212,13 @@ class Mage(Character):
 
 class Knight(Character):
     def __init__(self, name="Knight"):
-        super().__init__(name, 180, 10, 20, 8, "Air")
+        # NERF STATS: HP turun (180 -> 160) dan DEF dipangkas drastis (20 -> 12)
+        super().__init__(name, 160, 10, 12, 8, "Air")
         self.aegis_stacks = 0
 
     def take_damage(self, amount, attacker=None):
-        if self.aegis_stacks < 10:
+        # NERF PASIF: Batas maksimal stack turun dari 10 menjadi 5 (Maksimal hanya +25% DEF)
+        if self.aegis_stacks < 5:
             self.aegis_stacks += 1
             self.passive_logs += "[Aegis: +5% DEF] "
         return super().take_damage(amount, attacker)
@@ -227,10 +229,13 @@ class Knight(Character):
 
     def use_special_skill(self, target):
         self.current_mana -= 15
-        return target.take_damage(self.base_attack + self.defense, self), "menggunakan Shield Bash!"
+        # NERF SKILL: Serangan hanya mengambil separuh (0.5x) dari total Defense, bukan 100%
+        dmg = self.base_attack + int(self.defense * 0.5)
+        return target.take_damage(dmg, self), "menggunakan Shield Bash!"
 
     def use_ultimate(self, target, enemy_party=None, ally_party=None):
-        dmg = target.take_damage(self.defense * 2, self)
+        # NERF ULTIMATE: Pengali efek Defense turun dari 2x menjadi 1.5x
+        dmg = target.take_damage(int(self.defense * 1.5), self)
         return dmg, f"menghantam dengan HOLY JUDGEMENT! ({dmg} DMG dari DEF)"
 
 
