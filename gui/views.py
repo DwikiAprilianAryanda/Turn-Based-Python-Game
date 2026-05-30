@@ -35,6 +35,16 @@ class ModeSelectionView(arcade.View):
             self.bg_sprite = None
         self.build_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
     def build_ui(self):
         self.manager.clear()
         from engine.save_manager import SaveManager
@@ -69,6 +79,8 @@ class ModeSelectionView(arcade.View):
         self.manager.add(anchor)
 
     def on_resume_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from engine.save_manager import SaveManager
         from engine.factory import CharacterFactory
@@ -144,11 +156,15 @@ class ModeSelectionView(arcade.View):
         self.window.show_view(BattleView(player_party, enemy_party, "Endless", party_names, endless_floor=start_floor))
 
     def on_standard_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import DifficultySelectionView 
         self.window.show_view(DifficultySelectionView(party_size=3)) 
 
     def on_endless_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         from engine.save_manager import SaveManager
         SaveManager.clear_endless_state() # Hapus save lama jika mulai baru
         self.manager.disable()
@@ -156,6 +172,8 @@ class ModeSelectionView(arcade.View):
         self.window.show_view(EndlessCharacterSelectionView())
 
     def on_back_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
@@ -204,6 +222,16 @@ class MainMenuView(arcade.View):
             
         self.build_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
     def build_ui(self):
         self.manager.clear()
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
@@ -237,27 +265,37 @@ class MainMenuView(arcade.View):
         self.manager.add(anchor)
 
     def on_start_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         # PASTIKAN memanggil ModeSelectionView, BUKAN DifficultySelectionView
         from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
 
     def on_inv_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import InventoryView 
         self.window.show_view(InventoryView())
 
     def on_gacha_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import GachaView
         self.window.show_view(GachaView())
         
     def on_hist_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import HistoryView 
         self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         arcade.exit()
 
     def on_show_view(self):
@@ -539,9 +577,28 @@ class DifficultySelectionView(arcade.View):
         anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_layout)
 
-    def on_easy(self, event): self.select_diff("EASY")
-    def on_medium(self, event): self.select_diff("MEDIUM")
-    def on_hard(self, event): self.select_diff("HARD")
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
+    def on_easy(self, event): 
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
+        self.select_diff("EASY")
+    def on_medium(self, event): 
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
+        self.select_diff("MEDIUM")
+    def on_hard(self, event): 
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
+        self.select_diff("HARD")
 
     def select_diff(self, diff):
         self.manager.disable()
@@ -617,6 +674,16 @@ class CharacterSelectionView(arcade.View):
         self.last_enemy_char = None
 
         self.build_ui()
+
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_menu_standart.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
 
     def get_synergy(self, party):
         if self.party_size != 3:
@@ -804,6 +871,8 @@ class CharacterSelectionView(arcade.View):
         self.manager.add(anchor)
 
     def make_select_action(self, char_name, is_player):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         def action(event):
             if is_player and len(self.player_party) < self.party_size:
                 self.player_party.append(char_name)
@@ -815,18 +884,24 @@ class CharacterSelectionView(arcade.View):
         return action
 
     def on_undo_player(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         if self.player_party:
             self.player_party.pop() 
             self.last_player_char = self.player_party[-1] if self.player_party else None
             self.build_ui()
 
     def on_undo_enemy(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         if self.enemy_party:
             self.enemy_party.pop() 
             self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
             self.build_ui()
 
     def on_random(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         import random
         while len(self.player_party) < self.party_size:
             self.player_party.append(random.choice(self.available_characters))
@@ -838,11 +913,15 @@ class CharacterSelectionView(arcade.View):
         self.build_ui()
 
     def on_ready(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import EquipmentSelectionView
         self.window.show_view(EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty))
 
     def on_back_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import DifficultySelectionView
         self.window.show_view(DifficultySelectionView(self.party_size))
@@ -901,6 +980,16 @@ class EquipmentSelectionView(arcade.View):
         # Bangun UI Utama
         self.build_main_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_choose_item.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
     def build_main_ui(self):
         self.manager.clear()
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
@@ -938,11 +1027,15 @@ class EquipmentSelectionView(arcade.View):
         self.manager.add(anchor)
 
     def make_open_picker_action(self, char_idx):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         def action(event):
             self.open_item_picker(char_idx)
         return action
 
     def open_item_picker(self, char_idx):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         """Membuat layar pop-up/overlay ala Select Field untuk memilih item"""
         self.manager.clear()
         picker_box = arcade.gui.UIBoxLayout(space_between=10)
@@ -1001,6 +1094,8 @@ class EquipmentSelectionView(arcade.View):
         self.manager.add(anchor)
 
     def make_select_item_action(self, char_idx, item_name):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         def action(event):
             # 1. Kembalikan item lama ke inventory (jika bukan Tangan Kosong)
             old_item = self.equipped_items[char_idx]
@@ -1019,6 +1114,8 @@ class EquipmentSelectionView(arcade.View):
         return action
 
     def on_start_battle(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from models.equipment import Equipment 
         from models.synergy import SynergyBuff # IMPORT DECORATOR BARU KITA
@@ -1148,6 +1245,16 @@ class GameOverView(arcade.View):
             self.bg_sprite = None
         self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_game_over.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
         # Cek apakah pemain menang, lalu bagikan EXP
         exp_text = ""
         if is_player_win:
@@ -1194,6 +1301,8 @@ class GameOverView(arcade.View):
         self.manager.add(anchor_layout)
 
     def on_menu_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         self.window.show_view(MainMenuView())
 
@@ -1246,6 +1355,16 @@ class InventoryView(arcade.View):
         
         # Panggil fungsi perakit UI
         self.build_ui()
+
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_choose_item.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
 
     def build_ui(self):
         self.manager.clear()
@@ -1336,6 +1455,8 @@ class InventoryView(arcade.View):
         self.manager.add(anchor_layout)
 
     def make_select_action(self, item_name):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         def action(event):
             # Update state item yang dipilih dan gambar ulang (refresh) UI-nya
             self.selected_item = item_name
@@ -1343,6 +1464,8 @@ class InventoryView(arcade.View):
         return action
 
     def on_back_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         # Menggunakan lazy import agar tidak circular
         from gui.views import MainMenuView
@@ -1487,10 +1610,11 @@ class BattleView(arcade.View):
             path = f"assets/sfx/{name}"
             return arcade.load_sound(path) if os.path.exists(path) else None
 
-        self.sfx_attack = load_sfx("attack.wav")
-        self.sfx_skill = load_sfx("skill.wav")
-        self.sfx_heal = load_sfx("heal.wav")
-        self.sfx_ulti = load_sfx("ulti.wav")
+        self.sfx_attack = load_sfx("attack.mp3")
+        self.sfx_skill = load_sfx("skill.mp3")
+        self.sfx_heal = load_sfx("heal.mp3")
+        self.sfx_ulti = load_sfx("ulti.mp3")
+        self.sfx_click = load_sfx("roster.mp3")
 
     def refresh_sprites(self):
         """Memuat ulang gambar karakter yang sedang aktif di arena."""
@@ -1647,13 +1771,20 @@ class BattleView(arcade.View):
 
     def make_swap_action(self, target_idx):
         def action(event):
+            # Jika bukan giliran pemain, tombol tidak akan merespons
             if not self.is_player_turn: return
+            
+            # --- MAIN SFX UI KLIK ---
+            if hasattr(self, 'sfx_click') and self.sfx_click:
+                # Volume diset 0.5 agar tidak terlalu berisik
+                arcade.play_sound(self.sfx_click, volume=0.5) 
+            
             old_char = self.p1_active
             target_char = self.player_party[target_idx]
             
             self.p1_idx = target_idx
             self.p1_active = target_char
-            self.update_layout() # Akan memuat gambar karakter yang baru
+            self.update_layout() 
             
             self.p1_log = f"🔄 {old_char.name} mundur!\n{target_char.name} maju ke garis depan!"
             self.p2_log = ""
@@ -2152,6 +2283,16 @@ class EndlessCharacterSelectionView(arcade.View):
 
         self.build_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_endless_mode.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
     def get_synergy(self, party):
         if len(party) < 3:
             return "Butuh 3 Karakter", arcade.color.DARK_GRAY
@@ -2260,6 +2401,8 @@ class EndlessCharacterSelectionView(arcade.View):
         self.manager.add(anchor_right)
 
     def make_select_action(self, char_name):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         def action(event):
             if len(self.player_party) < self.party_size:
                 self.player_party.append(char_name)
@@ -2268,6 +2411,8 @@ class EndlessCharacterSelectionView(arcade.View):
         return action
 
     def on_undo(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         if self.player_party:
             self.player_party.pop()
             self.last_player_char = self.player_party[-1] if self.player_party else None
@@ -2276,6 +2421,8 @@ class EndlessCharacterSelectionView(arcade.View):
             self.build_ui()
 
     def on_ready(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         import random
         self.manager.disable()
         
@@ -2287,6 +2434,8 @@ class EndlessCharacterSelectionView(arcade.View):
         self.window.show_view(EquipmentSelectionView(self.player_party, enemy_party, "Endless"))
 
     def on_back_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
@@ -2412,6 +2561,16 @@ class EndlessRewardView(arcade.View):
             self.bg_sprite = None
         self.build_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/click_game_over.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
     def build_ui(self):
         self.manager.clear()
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
@@ -2444,6 +2603,9 @@ class EndlessRewardView(arcade.View):
         from models.equipment import Equipment
         from engine.gacha_system import GachaSystem
 
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
+
         new_floor = self.cleared_floor + 1
         available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         enemy_party = []
@@ -2473,6 +2635,9 @@ class EndlessRewardView(arcade.View):
     def on_save_quit(self, event):
         from engine.save_manager import SaveManager
         
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
+
         equipments = []
         for char in self.surviving_party:
             # Tinggal baca label yang kita tempelkan tadi, jika tidak ada, beri "Tangan Kosong"
@@ -2487,6 +2652,8 @@ class EndlessRewardView(arcade.View):
         self.window.show_view(MainMenuView())
 
     def on_home(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         from engine.save_manager import SaveManager
         SaveManager.add_gold(self.gold_reward)
         SaveManager.clear_endless_state() # Reset lantai ke 1
