@@ -1,12 +1,12 @@
 {
     "characters": {
         "Emperor": {
-            "level": 9,
-            "exp": 825
+            "level": 10,
+            "exp": 75
         },
         "Mage": {
             "level": 6,
-            "exp": 385
+            "exp": 535
         },
         "Gladiator": {
             "level": 2,
@@ -21,11 +21,11 @@
             "exp": 110
         },
         "Valkyrie": {
-            "level": 3,
-            "exp": 190
+            "level": 4,
+            "exp": 40
         }
     },
-    "gold": 11800,
+    "gold": 12400,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",

@@ -1022,18 +1022,52 @@ class EquipmentSelectionView(arcade.View):
         self.v_box.add(arcade.gui.UILabel(text="Klik tombol di samping nama untuk membuka daftar equipment", text_color=arcade.color.WHITE, font_size=14, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
+        # ==========================================
+        # ALAT BANTU: Pemanggil Gambar Thumbnail
+        # ==========================================
+        def get_equip_thumbnail(equip_name):
+            import os
+            
+            # 1. POTONG TEKS TAMBAHAN (Jika ada)
+            # Ini akan mengambil teks HANYA sampai sebelum tanda "(" atau "+"
+            # Jadi "Tombak Ksatria (+15 ATK)" akan menjadi "Tombak Ksatria"
+            clean_name = equip_name.split('(')[0].split('+')[0].strip()
+            
+            # 2. RUMUS PENAMAAN OTOMATIS
+            safe_name = clean_name.lower().replace(" ", "_")
+            
+            # 3. ALAT DETEKTIF: Munculkan di terminal teks apa yang SEBENARNYA dicari program
+            print(f"🔍 INFO ITEM: Program sedang mencari file bernama -> 'assets/{safe_name}'")
+            
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{safe_name}{ext}"
+                if os.path.exists(path):
+                    sprite = arcade.Sprite(path)
+                    # Kunci tinggi gambar ikon di 50 pixel agar sejajar dengan tombol
+                    sprite.scale = 50 / sprite.texture.height
+                    return arcade.gui.UISpriteWidget(sprite=sprite)
+            
+            # Jika gambar belum ada di folder assets, tampilkan kotak abu-abu sebagai cadangan
+            return arcade.gui.UISpace(width=50, height=50, color=arcade.color.DARK_GRAY)
+
         # DAFTAR KARAKTER
         for i, char_type in enumerate(self.player_types):
             row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
             
-            # LABEL NAMA KARAKTER: Putih, Tebal, dan lebih besar
+            # 1. LABEL NAMA KARAKTER
             lbl = arcade.gui.UILabel(text=f"{char_type}", width=150, font_size=16, bold=True, text_color=arcade.color.WHITE)
             
             current_item = self.equipped_items[i]
-            btn = arcade.gui.UIFlatButton(text=current_item, width=350, height=50)
+            
+            # 2. GAMBAR THUMBNAIL EQUIPMENT (Otomatis memanggil nama itemnya)
+            thumbnail = get_equip_thumbnail(current_item)
+            
+            # 3. TOMBOL EQUIPMENT (Lebar dikurangi sedikit agar muat dengan gambar)
+            btn = arcade.gui.UIFlatButton(text=current_item, width=290, height=50)
             btn.on_click = self.make_open_picker_action(i)
             
             row.add(lbl)
+            row.add(thumbnail)
             row.add(btn)
             self.v_box.add(row)
 
@@ -1056,61 +1090,154 @@ class EquipmentSelectionView(arcade.View):
     def open_item_picker(self, char_idx):
         if hasattr(self, 'sfx_click') and self.sfx_click:
             arcade.play_sound(self.sfx_click, volume=0.5)
-        """Membuat layar pop-up/overlay ala Select Field untuk memilih item"""
+            
         self.manager.clear()
-        picker_box = arcade.gui.UIBoxLayout(space_between=10)
         
-        picker_box.add(arcade.gui.UILabel(text=f"Pilih Equipment untuk {self.player_types[char_idx]}", font_size=20, text_color=arcade.color.GOLD, bold=True))
-        picker_box.add(arcade.gui.UILabel(text="", height=10))
+        # ==========================================
+        # 1. JURUS DIMMER: Menggelapkan Background
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+        
+        # ==========================================
+        # WADAH UTAMA KARTU
+        # ==========================================
+        main_window = arcade.gui.UIBoxLayout(vertical=True, space_between=30)
+        
+        title_text = f"✨ PERLENGKAPAN : {self.player_types[char_idx].upper()} ✨"
+        main_window.add(arcade.gui.UILabel(text=title_text, font_size=22, text_color=arcade.color.GOLD, bold=True))
 
         from engine.gacha_system import GachaSystem
         import os
         
-        # Loop semua item unik yang kita punya
-        for item_name, count in self.inventory_counts.items():
-            # Sembunyikan item yang stoknya habis (kecuali sedang dipakai orang lain)
-            if count <= 0 and item_name != "Tangan Kosong":
-                continue 
-                
-            row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        grid_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=50)
+        col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
+        col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
+        
+        valid_items = [(name, count) for name, count in self.inventory_counts.items() if count > 0 or name == "Tangan Kosong"]
             
-            # RENDER GAMBAR ITEM JIKA ADA
-            if item_name != "Tangan Kosong":
-                item_data = GachaSystem.ITEM_POOL.get(item_name)
-                img_path = item_data.get("img", "") if item_data else ""
-                
-                if os.path.exists(img_path):
-                    tex = arcade.load_texture(img_path)
-                    tex_widget = arcade.gui.UITextureRectangle(texture=tex, width=40, height=40)
-                    row.add(tex_widget)
-                else:
-                    placeholder = arcade.gui.UISpace(width=40, height=40, color=arcade.color.GRAY)
-                    row.add(placeholder)
-            else:
-                placeholder = arcade.gui.UISpace(width=40, height=40, color=arcade.color.DARK_GRAY)
-                row.add(placeholder)
+        for i, (item_name, count) in enumerate(valid_items):
+            item_data = GachaSystem.ITEM_POOL.get(item_name) if item_name != "Tangan Kosong" else None
+            
+            # Kartu per Item (Horizontal)
+            card = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+            
+            # --- BAGIAN 1: IKON ---
+            clean_name = item_name.split('(')[0].split('+')[0].strip()
+            safe_name = clean_name.lower().replace(" ", "_")
+            
+            tex = None
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{safe_name}{ext}"
+                if os.path.exists(path):
+                    tex = arcade.load_texture(path)
+                    break
 
-            # RENDER TOMBOL & TEKS INFORMASI
+            if tex:
+                item_sprite = arcade.Sprite(tex)
+                item_sprite.scale = 60 / item_sprite.texture.height
+                icon_widget = arcade.gui.UISpriteWidget(sprite=item_sprite)
+            else:
+                icon_widget = arcade.gui.UISpace(width=60, height=60, color=arcade.color.DARK_GRAY)
+            card.add(icon_widget)
+            
+            # --- BAGIAN 2: TEKS ---
+            info_box = arcade.gui.UIBoxLayout(vertical=True)
+            info_box.add(arcade.gui.UISpace(height=5)) 
+            
             if item_name == "Tangan Kosong":
-                btn_text = "Tangan Kosong (Lepas Equipment)"
+                info_box.add(arcade.gui.UILabel(text="Tangan Kosong", font_size=15, text_color=arcade.color.WHITE, bold=True, width=240))
+                info_box.add(arcade.gui.UILabel(text="Lepaskan perlengkapan saat ini", font_size=12, text_color=arcade.color.GRAY, width=240))
             else:
-                desc = item_data["desc"] if item_data else "Tidak ada deskripsi"
-                btn_text = f"[{item_data['rarity']}] {item_name} (Sisa: {count})\nEfek: {desc}"
-
-            # PERBAIKAN: Tombol diperlebar (width=650) dan ditinggikan (height=60) agar teks lega
-            btn = arcade.gui.UIFlatButton(text=btn_text, width=650, height=60)
+                rarity = item_data.get("rarity", "Common")
+                color = arcade.color.WHITE
+                if rarity == "Mythic": color = arcade.color.RED
+                elif rarity == "Legendary": color = arcade.color.GOLD
+                elif rarity == "Rare": color = arcade.color.LIGHT_BLUE
+                
+                info_box.add(arcade.gui.UILabel(text=f"{item_name}", font_size=15, text_color=color, bold=True, width=240))
+                
+                desc = item_data.get("desc", "Tanpa efek")
+                if len(desc) > 35: desc = desc[:32] + "..."
+                info_box.add(arcade.gui.UILabel(text=desc, font_size=12, text_color=arcade.color.LIGHT_GREEN, width=240))
+            
+            card.add(info_box)
+            
+            # --- BAGIAN 3: TOMBOL RPG STYLE (FIXED DICTIONARY) ---
+            btn_text = "Lepas" if item_name == "Tangan Kosong" else f"Pakai ({count})"
+            
+            rpg_button_style = {
+                "normal": {
+                    "font_color": arcade.color.WHITE,
+                    "bg_color": arcade.color.DARK_SLATE_BLUE,
+                    "border_color": arcade.color.CYAN,
+                    "border_width": 2,
+                },
+                "hover": {
+                    "font_color": arcade.color.WHITE,
+                    "bg_color": arcade.color.ROYAL_BLUE,
+                    "border_color": arcade.color.GOLD,
+                    "border_width": 2,
+                },
+                "press": {
+                    "font_color": arcade.color.GOLD,
+                    "bg_color": arcade.color.MIDNIGHT_BLUE,
+                    "border_color": arcade.color.GOLD,
+                    "border_width": 3,
+                }
+            }
+            
+            btn = arcade.gui.UIFlatButton(text=btn_text, width=90, height=50, style=rpg_button_style)
             btn.on_click = self.make_select_item_action(char_idx, item_name)
+            card.add(btn) # Langsung ditambahkan tanpa UIAnchorLayout yang rawan kolaps
             
-            row.add(btn)
-            picker_box.add(row)
+            # Distribusi ke kolom
+            if i % 2 == 0:
+                col1.add(card)
+            else:
+                col2.add(card)
+                
+        grid_layout.add(col1)
+        grid_layout.add(col2)
+        main_window.add(grid_layout)
+        
+        main_window.add(arcade.gui.UILabel(text="", height=20))
+        
+        # TOMBOL BATAL (FIXED DICTIONARY)
+        cancel_style = {
+            "normal": {
+                "font_color": arcade.color.WHITE, 
+                "bg_color": arcade.color.CRIMSON, 
+                "border_color": arcade.color.DARK_RED, 
+                "border_width": 2
+            },
+            "hover": {
+                "font_color": arcade.color.WHITE, 
+                "bg_color": arcade.color.RED, 
+                "border_color": arcade.color.WHITE, 
+                "border_width": 2
+            },
+            "press": {
+                "font_color": arcade.color.WHITE, 
+                "bg_color": arcade.color.DARK_RED, 
+                "border_color": arcade.color.WHITE, 
+                "border_width": 2
+            }
+        }
+        back_btn = arcade.gui.UIFlatButton(text="❌ BATAL & KEMBALI", width=300, height=50, style=cancel_style)
+        
+        def on_back(event):
+            if hasattr(self, 'sfx_click') and self.sfx_click:
+                arcade.play_sound(self.sfx_click, volume=0.5)
+            self.build_main_ui()
             
-        picker_box.add(arcade.gui.UILabel(text="", height=10))
-        back_btn = arcade.gui.UIFlatButton(text="Batal", width=200)
-        back_btn.on_click = lambda e: self.build_main_ui()
-        picker_box.add(back_btn)
+        back_btn.on_click = on_back
+        main_window.add(back_btn)
 
         anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=picker_box, anchor_x="center", anchor_y="center")
+        anchor.add(child=main_window, anchor_x="center", anchor_y="center")
         self.manager.add(anchor)
 
     def make_select_item_action(self, char_idx, item_name):
@@ -1413,13 +1540,24 @@ class InventoryView(arcade.View):
                     left_panel.add(current_row)
                     current_row = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
                 
-                item_data = GachaSystem.ITEM_POOL.get(item_name)
-                img_path = item_data.get("img", "") if item_data else ""
+                # ==========================================
+                # FIX GRID KIRI: Gunakan Auto-Translate
+                # ==========================================
+                clean_name = item_name.split('(')[0].split('+')[0].strip()
+                safe_name = clean_name.lower().replace(" ", "_")
                 
-                if os.path.exists(img_path):
-                    tex = arcade.load_texture(img_path)
+                tex = None
+                for ext in ['.png', '.jpg', '.jpeg']:
+                    path = f"assets/{safe_name}{ext}"
+                    if os.path.exists(path):
+                        tex = arcade.load_texture(path)
+                        break
+
+                if tex:
+                    # Menampilkan thumbnail gambar di kotak grid
                     btn = arcade.gui.UITextureButton(texture=tex, width=80, height=80)
                 else:
+                    # Teks cadangan jika gambar tidak ada
                     btn_text = f"{item_name[:6]}..\nx{count}"
                     btn = arcade.gui.UIFlatButton(text=btn_text, width=80, height=80)
                 
@@ -1439,12 +1577,29 @@ class InventoryView(arcade.View):
         right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
         if self.selected_item:
+            from engine.gacha_system import GachaSystem
             item_data = GachaSystem.ITEM_POOL.get(self.selected_item)
+            
             if item_data:
-                img_path = item_data.get("img", "")
-                if os.path.exists(img_path):
-                    tex = arcade.load_texture(img_path)
-                    right_panel.add(arcade.gui.UITextureRectangle(texture=tex, width=200, height=200))
+                # ==========================================
+                # FIX PANEL KANAN: Gunakan Auto-Translate
+                # ==========================================
+                import os
+                clean_name = self.selected_item.split('(')[0].split('+')[0].strip()
+                safe_name = clean_name.lower().replace(" ", "_")
+                
+                tex_large = None
+                for ext in ['.png', '.jpg', '.jpeg']:
+                    path = f"assets/{safe_name}{ext}"
+                    if os.path.exists(path):
+                        tex_large = arcade.load_texture(path)
+                        break
+                
+                if tex_large:
+                    preview_sprite = arcade.Sprite(tex_large)
+                    # Paksa ukurannya menjadi sekitar 200 pixel
+                    preview_sprite.scale = 200 / preview_sprite.texture.height
+                    right_panel.add(arcade.gui.UISpriteWidget(sprite=preview_sprite))
                 else:
                     right_panel.add(arcade.gui.UISpace(width=200, height=200, color=arcade.color.DARK_GRAY))
                 
