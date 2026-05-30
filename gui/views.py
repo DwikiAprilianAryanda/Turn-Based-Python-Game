@@ -21,6 +21,18 @@ class ModeSelectionView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/standart_menu_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         self.build_ui()
 
     def build_ui(self):
@@ -153,8 +165,17 @@ class ModeSelectionView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
 
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 2. LAYAR MENU UTAMA
@@ -272,6 +293,18 @@ class GachaView(arcade.View):
         from engine.save_manager import SaveManager
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/gacha_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         
         self.state = "IDLE" 
         self.anim_timer = 0.0
@@ -410,6 +443,8 @@ class GachaView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         sw, sh = self.window.width, self.window.height
         cx, cy = sw / 2, sh / 2
 
@@ -448,6 +483,14 @@ class GachaView(arcade.View):
 
         self.manager.draw()
 
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
+
 # ==========================================
 # 3. LAYAR PILIH KESULITAN (BARU)
 # ==========================================
@@ -457,6 +500,18 @@ class DifficultySelectionView(arcade.View):
         self.party_size = party_size
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/standart_menu_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
         self.v_box.add(arcade.gui.UILabel(text="PILIH TINGKAT KESULITAN", text_color=arcade.color.GOLD, font_size=28, bold=True))
@@ -501,7 +556,17 @@ class DifficultySelectionView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 4. LAYAR PEMILIHAN KARAKTER (UPDATE: INFO STATS, PASIF & ULTIMATE)
@@ -513,6 +578,18 @@ class CharacterSelectionView(arcade.View):
         self.difficulty = difficulty
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/select_standart_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
 
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         
@@ -749,7 +826,17 @@ class CharacterSelectionView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 4.5 LAYAR PERSIAPAN EQUIPMENT (PERBAIKAN BUG STOK & UI MODERN)
@@ -759,6 +846,18 @@ class EquipmentSelectionView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/select_standart_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
 
         self.player_types = player_types
         self.enemy_types = enemy_types
@@ -985,7 +1084,17 @@ class EquipmentSelectionView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 
 # ==========================================
@@ -999,6 +1108,18 @@ class GameOverView(arcade.View):
         
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/game_over_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
         # Cek apakah pemain menang, lalu bagikan EXP
@@ -1055,7 +1176,17 @@ class GameOverView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # LAYAR INVENTORY (REDESAIN: GRID & DETAILS PANE)
@@ -1065,6 +1196,18 @@ class InventoryView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/inventory_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         
         # Ambil data dari penyimpanan
         raw_inventory = SaveManager.get_inventory()
@@ -1184,7 +1327,17 @@ class InventoryView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 6. LAYAR PERTEMPURAN (FINAL: ANIMASI SPRITE & IKON STATUS)
@@ -1797,6 +1950,21 @@ class EndlessCharacterSelectionView(arcade.View):
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
 
+        # --- BACKGROUND KHUSUS MENU ENDLESS ---
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/endless_menu.jpg" # Nama gambar khusus menu endless
+        
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
+
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         
         self.element_map = {
@@ -1958,6 +2126,10 @@ class EndlessCharacterSelectionView(arcade.View):
     def on_draw(self):
         self.clear()
         
+        # Gambar background paling bawah
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
+        
         # FIX ARCADE 3.0: Menggambar menggunakan SpriteList
         if self.preview_sprite:
             self.preview_sprite.center_x = self.window.width * 0.85
@@ -1965,6 +2137,14 @@ class EndlessCharacterSelectionView(arcade.View):
             self.sprite_list.draw() 
             
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 7. LAYAR RIWAYAT PERTANDINGAN
@@ -1974,6 +2154,18 @@ class HistoryView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/history_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
         title_label = arcade.gui.UILabel(
@@ -2011,7 +2203,17 @@ class HistoryView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # 2. LAYAR REWARD ENDLESS (UPDATE: SCALING & SAVE)
@@ -2025,6 +2227,18 @@ class EndlessRewardView(arcade.View):
         self.gold_reward = 100 * self.cleared_floor
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/game_over_endless_bg.jpg" # Tinggal ganti nama file sesuai selera
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
         self.build_ui()
 
     def build_ui(self):
@@ -2115,4 +2329,14 @@ class EndlessRewardView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        super().on_resize(width, height)
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
