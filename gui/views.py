@@ -14,78 +14,146 @@ from engine.save_manager import SaveManager, DIFFICULTY_SETTINGS
 from engine.gacha_system import GachaSystem
 
 # ==========================================
-# 1. LAYAR MAIN MENU (UPDATE TOMBOL GACHA)
+# 1. LAYAR PEMILIHAN MODE (STANDARD VS ENDLESS)
+# ==========================================
+class ModeSelectionView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.build_ui()
+
+    def build_ui(self):
+        self.manager.clear()
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        
+        title = arcade.gui.UILabel(text="PILIH JALUR PERTANDINGAN", font_size=32, bold=True, text_color=arcade.color.GOLD)
+        v_box.add(title)
+        v_box.add(arcade.gui.UILabel(text="", height=20))
+        
+        btn_standard = arcade.gui.UIFlatButton(text="⚔️ Standard Mode (1v1, 2v2, 3v3)", width=350, height=50)
+        btn_standard.on_click = self.on_standard_click
+        
+        btn_endless = arcade.gui.UIFlatButton(text="♾️ Endless Tower (Wajib 3v3)", width=350, height=50)
+        btn_endless.on_click = self.on_endless_click
+        
+        btn_back = arcade.gui.UIFlatButton(text="Kembali", width=350, height=50)
+        btn_back.on_click = self.on_back_click
+        
+        v_box.add(btn_standard)
+        v_box.add(btn_endless)
+        v_box.add(btn_back)
+        
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    def on_standard_click(self, event):
+        self.manager.disable()
+        from gui.views import DifficultySelectionView 
+        self.window.show_view(DifficultySelectionView(party_size=3)) 
+
+    def on_endless_click(self, event):
+        self.manager.disable()
+        from gui.views import EndlessCharacterSelectionView
+        self.window.show_view(EndlessCharacterSelectionView())
+
+    def on_back_click(self, event):
+        self.manager.disable()
+        self.window.show_view(MainMenuView())
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
+
+
+# ==========================================
+# 2. LAYAR MENU UTAMA
 # ==========================================
 class MainMenuView(arcade.View):
     def __init__(self):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=20)
+        self.build_ui()
 
-        title_label = arcade.gui.UILabel(
-            text="EPIC TURN-BASED ARENA", text_color=arcade.color.GOLD, font_size=36, bold=True
-        )
+    def build_ui(self):
+        self.manager.clear()
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+
+        title = arcade.gui.UILabel(text="EPIC TURN-BASED ARENA", font_size=36, bold=True, text_color=arcade.color.GOLD)
+        v_box.add(title)
+        v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        start_btn = arcade.gui.UIFlatButton(text="⚔️ Mulai Bermain", width=250, height=45)
+        start_btn.on_click = self.on_start_click
+        v_box.add(start_btn)
         
-        start_button = arcade.gui.UIFlatButton(text="⚔️ Mulai Permainan", width=200)
-        gacha_button = arcade.gui.UIFlatButton(text="🎲 Tarik Gacha", width=200)
-        inv_button = arcade.gui.UIFlatButton(text="🎒 Inventory", width=200) # BARU
-        history_button = arcade.gui.UIFlatButton(text="📜 Lihat Riwayat", width=200) 
-        quit_button = arcade.gui.UIFlatButton(text="❌ Keluar", width=200)
+        inv_btn = arcade.gui.UIFlatButton(text="🎒 Inventory", width=250, height=45)
+        inv_btn.on_click = self.on_inv_click
+        v_box.add(inv_btn)
 
-        start_button.on_click = self.on_start_click
-        gacha_button.on_click = self.on_gacha_click # EVENT BARU
-        inv_button.on_click = self.on_inv_click
-        history_button.on_click = self.on_history_click 
-        quit_button.on_click = self.on_quit_click
+        gacha_btn = arcade.gui.UIFlatButton(text="🎁 Gacha Equipment", width=250, height=45)
+        gacha_btn.on_click = self.on_gacha_click
+        v_box.add(gacha_btn)
+        
+        hist_btn = arcade.gui.UIFlatButton(text="📜 Riwayat Pertandingan", width=250, height=45)
+        hist_btn.on_click = self.on_hist_click
+        v_box.add(hist_btn)
 
-        self.v_box.add(start_button)
-        self.v_box.add(gacha_button)
-        self.v_box.add(inv_button) # BARU
-        self.v_box.add(history_button) 
-        self.v_box.add(quit_button)
+        quit_btn = arcade.gui.UIFlatButton(text="❌ Keluar", width=250, height=45)
+        quit_btn.on_click = self.on_quit_click
+        v_box.add(quit_btn)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
 
     def on_start_click(self, event):
         self.manager.disable()
+        # PASTIKAN memanggil ModeSelectionView, BUKAN DifficultySelectionView
+        from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
-        
-    def on_gacha_click(self, event):
-        self.manager.disable()
-        self.window.show_view(GachaView())
 
     def on_inv_click(self, event):
         self.manager.disable()
+        from gui.views import InventoryView 
         self.window.show_view(InventoryView())
 
-    def on_history_click(self, event):
+    def on_gacha_click(self, event):
         self.manager.disable()
+        from gui.views import GachaView
+        self.window.show_view(GachaView())
+        
+    def on_hist_click(self, event):
+        self.manager.disable()
+        from gui.views import HistoryView 
         self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
         arcade.exit()
 
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_GRAY)
+        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
     def on_draw(self):
         self.clear()
         self.manager.draw()
 
 # ==========================================
-# LAYAR GACHA (UPDATE: ANIMASI PETI & REVEAL)
+# LAYAR GACHA (UPDATE: SPRITELIST FIX)
 # ==========================================
 class GachaView(arcade.View):
     def __init__(self):
         super().__init__()
+        from engine.save_manager import SaveManager
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         
-        # --- STATE ANIMASI GACHA ---
-        self.state = "IDLE"  # Fase: IDLE, SHAKING, FLASH, REVEAL
+        self.state = "IDLE" 
         self.anim_timer = 0.0
         self.time_elapsed = 0.0
         
@@ -95,27 +163,39 @@ class GachaView(arcade.View):
         self.chest_scale = 1.0
         self.chest_shake_x = 0.0
         self.flash_alpha = 0
+        self.error_msg = ""
+        
+        self.item_sprite = None
+        # FIX ERROR: Siapkan wadah SpriteList
+        self.sprite_list = arcade.SpriteList() 
         
         self.build_ui()
 
     def build_ui(self):
+        from engine.save_manager import SaveManager
         self.manager.clear()
         
-        # Tombol kembali ke menu utama
         back_btn = arcade.gui.UIFlatButton(text="Kembali", width=100)
         back_btn.on_click = self.on_back_click
         anchor_tl = arcade.gui.UIAnchorLayout()
         anchor_tl.add(child=back_btn, anchor_x="left", anchor_y="top", align_x=20, align_y=-20)
         
-        # Panel Gacha (Hanya tampil saat IDLE)
-        self.v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        self.v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         title = arcade.gui.UILabel(text="GACHA EQUIPMENT", font_size=28, bold=True, text_color=arcade.color.GOLD)
         
-        pull_btn = arcade.gui.UIFlatButton(text="✨ Tarik 1x (100 Gold)", width=200, height=50)
+        current_gold = SaveManager.get_gold()
+        gold_label = arcade.gui.UILabel(text=f"🪙 Gold Anda: {current_gold}", font_size=16, text_color=arcade.color.YELLOW)
+        
+        from engine.gacha_system import GachaSystem
+        pull_btn = arcade.gui.UIFlatButton(text=f"✨ Tarik 1x ({GachaSystem.COST_PER_PULL} Gold)", width=250, height=50)
         pull_btn.on_click = self.on_pull_click
         
         self.v_box.add(title)
+        self.v_box.add(gold_label)
         self.v_box.add(pull_btn)
+        
+        if self.error_msg:
+            self.v_box.add(arcade.gui.UILabel(text=self.error_msg, font_size=14, text_color=arcade.color.RED, bold=True))
         
         anchor_center = arcade.gui.UIAnchorLayout()
         anchor_center.add(child=self.v_box, anchor_x="center", anchor_y="center")
@@ -124,46 +204,51 @@ class GachaView(arcade.View):
         self.manager.add(anchor_center)
 
     def get_rarity_color(self, rarity):
-        """Menentukan warna kilat dan teks murni berdasarkan label kelangkaan"""
-        if rarity == "Mythic":
-            return arcade.color.RED           # Mythic = Merah
-        elif rarity == "Legendary":
-            return arcade.color.GOLD          # Legendary = Emas
-        elif rarity == "Rare":
-            return arcade.color.LIGHT_GREEN   # Rare = Hijau
-        else:
-            return arcade.color.WHITE         # Common = Putih
+        if rarity == "Mythic": return arcade.color.RED
+        elif rarity == "Legendary": return arcade.color.GOLD
+        elif rarity == "Rare": return arcade.color.LIGHT_GREEN
+        else: return arcade.color.WHITE
 
     def on_pull_click(self, event):
         from engine.gacha_system import GachaSystem
         from engine.save_manager import SaveManager
 
-        # 1. PULL ITEM MENGGUNAKAN FUNGSI BAWAAN GACHASYSTEM (Agar rate gacha % nya berfungsi)
+        if not SaveManager.deduct_gold(GachaSystem.COST_PER_PULL):
+            self.error_msg = "❌ Gold tidak cukup!"
+            self.build_ui()
+            return
+            
         pulled_name, pulled_rarity = GachaSystem.pull_item()
         item_data = GachaSystem.ITEM_POOL[pulled_name]
         
         self.pulled_item_name = pulled_name
-        
-        # 2. Ambil deskripsi dan warna dari data
         self.pulled_item_stats = item_data.get("desc", "")
         self.rarity_color = self.get_rarity_color(pulled_rarity)
         
-        # 3. Simpan item ke Inventory Permanen
+        import os
+        img_path = item_data.get("img", "")
+        if os.path.exists(img_path):
+            self.item_sprite = arcade.Sprite(img_path, scale=2.0)
+        else:
+            self.item_sprite = arcade.SpriteSolidColor(width=100, height=100, color=self.rarity_color)
+            
+        # FIX ERROR: Masukkan gambar ke dalam SpriteList
+        self.sprite_list.clear()
+        self.sprite_list.append(self.item_sprite)
+        
         SaveManager.add_equipment(self.pulled_item_name)
         
-        # 4. Mulai Animasi Shaking!
-        self.manager.clear() # Sembunyikan UI
+        self.manager.clear() 
         self.state = "SHAKING"
         self.anim_timer = 2.0 
         self.chest_scale = 1.0
+        self.error_msg = ""
 
     def on_back_click(self, event):
-        # Kembali ke menu utama (Sesuaikan dengan nama kelas MainMenu Anda)
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
     def on_continue_click(self, event):
-        # Reset ke awal untuk gacha lagi
         self.state = "IDLE"
         self.build_ui()
 
@@ -173,28 +258,21 @@ class GachaView(arcade.View):
         
         if self.state == "SHAKING":
             self.anim_timer -= delta_time
-            
-            # Efek Getaran Peti (Semakin lama semakin kencang)
             intensity = 2.0 - self.anim_timer
             self.chest_shake_x = math.sin(self.time_elapsed * 50) * (5 * intensity)
-            
-            # Efek Peti Membesar perlahan sebelum meledak
             self.chest_scale = 1.0 + (1.0 - (self.anim_timer / 2.0)) * 0.3
             
             if self.anim_timer <= 0:
                 self.state = "FLASH"
-                self.anim_timer = 0.5 # Durasi kilat layar
+                self.anim_timer = 0.5 
                 self.flash_alpha = 255
                 
         elif self.state == "FLASH":
             self.anim_timer -= delta_time
-            # Memudarkan efek kilat secara bertahap
             self.flash_alpha = max(0, int((self.anim_timer / 0.5) * 255))
             
             if self.anim_timer <= 0:
                 self.state = "REVEAL"
-                
-                # Munculkan tombol Continue setelah animasi selesai
                 cont_btn = arcade.gui.UIFlatButton(text="Lanjutkan", width=150)
                 cont_btn.on_click = self.on_continue_click
                 anchor_bot = arcade.gui.UIAnchorLayout()
@@ -204,7 +282,6 @@ class GachaView(arcade.View):
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EERIE_BLACK)
 
-    # --- FUNGSI AMAN MENGGAMBAR KOTAK (COMPATIBLE DENGAN ARCADE 3.0) ---
     def _draw_rect(self, center_x, center_y, width, height, color):
         hw, hh = width / 2, height / 2
         points = ((center_x - hw, center_y - hh), (center_x + hw, center_y - hh), 
@@ -216,100 +293,39 @@ class GachaView(arcade.View):
         sw, sh = self.window.width, self.window.height
         cx, cy = sw / 2, sh / 2
 
-        # 1. GAMBAR LATAR BELAKANG / PETI
         if self.state in ["SHAKING", "FLASH"]:
-            # Gambar "Peti" sementara (Kotak Emas) bergetar
             chest_width = 100 * self.chest_scale
             chest_height = 80 * self.chest_scale
             self._draw_rect(cx + self.chest_shake_x, cy, chest_width, chest_height, arcade.color.GOLDENROD)
-            self._draw_rect(cx + self.chest_shake_x, cy + 10, chest_width, 10, arcade.color.DARK_GOLDENROD) # Detail penutup peti
-            
-            # Teks indikator
+            self._draw_rect(cx + self.chest_shake_x, cy + 10, chest_width, 10, arcade.color.DARK_GOLDENROD) 
             arcade.draw_text("Membuka Peti...", cx, cy - 80, arcade.color.WHITE, 14, anchor_x="center")
 
-        # 2. EFEK REVEAL (ITEM MUNCUL)
         elif self.state == "REVEAL":
             import math
-            # Gambar Sinar Latar Belakang Berputar (Pemanis Visual)
             ray_length = 400
             ray_count = 12
             for i in range(ray_count):
                 angle = self.time_elapsed + (i * (2 * math.pi / ray_count))
                 end_x = cx + math.cos(angle) * ray_length
                 end_y = cy + math.sin(angle) * ray_length
-                # Menggambar garis sinar dengan warna Rarity yang agak transparan
                 ray_color = (*self.rarity_color[:3], 100) 
                 arcade.draw_line(cx, cy, end_x, end_y, ray_color, 40)
 
-            # Gambar Kotak Item
-            self._draw_rect(cx, cy, 300, 200, arcade.color.DARK_SLATE_GRAY)
-            self._draw_rect(cx, cy, 290, 190, arcade.color.BLACK) # Inner Border
+            if self.item_sprite:
+                self.item_sprite.center_x = cx
+                self.item_sprite.center_y = cy + 20
+                # FIX ERROR: Memanggil gambar dari SpriteList
+                self.sprite_list.draw() 
             
-            # Teks Item
-            arcade.draw_text("SELAMAT! ANDA MENDAPATKAN:", cx, cy + 50, arcade.color.WHITE, 12, anchor_x="center")
-            arcade.draw_text(self.pulled_item_name, cx, cy + 10, self.rarity_color, 24, bold=True, anchor_x="center")
-            arcade.draw_text(self.pulled_item_stats, cx, cy - 30, arcade.color.LIGHT_GREEN, 14, anchor_x="center")
+            arcade.draw_text("SELAMAT! ANDA MENDAPATKAN:", cx, cy - 60, arcade.color.WHITE, 12, anchor_x="center")
+            arcade.draw_text(self.pulled_item_name, cx, cy - 90, self.rarity_color, 24, bold=True, anchor_x="center")
+            arcade.draw_text(self.pulled_item_stats, cx, cy - 110, arcade.color.LIGHT_GREEN, 14, anchor_x="center")
 
-        # 3. GAMBAR KILAT LAYAR (Paling atas)
         if self.state == "FLASH" and self.flash_alpha > 0:
             flash_color = (*self.rarity_color[:3], self.flash_alpha)
             points = ((0, 0), (sw, 0), (sw, sh), (0, sh))
             arcade.draw_polygon_filled(points, flash_color)
 
-        # 4. GAMBAR UI MANAGER (Tombol-tombol)
-        self.manager.draw()
-
-# ==========================================
-# 2. LAYAR PILIH MODE PERTANDINGAN
-# ==========================================
-class ModeSelectionView(arcade.View):
-    def __init__(self):
-        super().__init__()
-        self.manager = arcade.gui.UIManager()
-        self.manager.enable()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
-
-        self.v_box.add(arcade.gui.UILabel(text="PILIH MODE PERTANDINGAN", text_color=arcade.color.GOLD, font_size=28, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-
-        btn_1v1 = arcade.gui.UIFlatButton(text="Duel (1 vs 1)", width=250)
-        btn_2v2 = arcade.gui.UIFlatButton(text="Tag Team (2 vs 2)", width=250)
-        btn_3v3 = arcade.gui.UIFlatButton(text="Party (3 vs 3)", width=250)
-
-        btn_1v1.on_click = self.on_click_1v1
-        btn_2v2.on_click = self.on_click_2v2
-        btn_3v3.on_click = self.on_click_3v3
-
-        self.v_box.add(btn_1v1)
-        self.v_box.add(btn_2v2)
-        self.v_box.add(btn_3v3)
-
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=250)
-        back_btn.on_click = self.on_back_click
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-        self.v_box.add(back_btn)
-
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
-
-    def on_click_1v1(self, event): self.select_mode(1)
-    def on_click_2v2(self, event): self.select_mode(2)
-    def on_click_3v3(self, event): self.select_mode(3)
-
-    def select_mode(self, party_size):
-        self.manager.disable()
-        self.window.show_view(DifficultySelectionView(party_size))
-
-    def on_back_click(self, event):
-        self.manager.disable()
-        self.window.show_view(MainMenuView())
-
-    def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
-
-    def on_draw(self):
-        self.clear()
         self.manager.draw()
 
 # ==========================================
@@ -390,7 +406,7 @@ class CharacterSelectionView(arcade.View):
         # DATABASE INFORMASI KARAKTER LENGKAP
         self.char_info = {
             "Emperor": {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker", "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)", "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
-            "Gladiator": {"stats": "HP: 150 | ATK: 12 | DEF: 8", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap mengenai musuh)", "ulti": "Arena Execution (Burst DMG + Lifesteal 40%)"},
+            "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
             "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
             "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
             "Knight": {"stats": "HP: 180 | ATK: 10 | DEF: 20", "role": "Pure Tank", "passive": "Aegis Aura (+15% DEF untuk seluruh Tim)", "ulti": "Holy Judgement (DMG dihitung dari 2x DEF)"},
@@ -831,7 +847,10 @@ class EquipmentSelectionView(arcade.View):
 
         # 3. LEMPAR KE ARENA
         from gui.views import BattleView
-        battle_view = BattleView(player_party, enemy_party, self.difficulty, self.player_types)
+        
+        # Cek apakah ini mode Endless untuk menentukan lantai awal
+        start_floor = 1 if self.difficulty == "Endless" else 0
+        battle_view = BattleView(player_party, enemy_party, self.difficulty, self.player_types, endless_floor=start_floor)
         self.window.show_view(battle_view)
 
     def on_show_view(self):
@@ -1044,8 +1063,9 @@ class InventoryView(arcade.View):
 # 6. LAYAR PERTEMPURAN (FINAL: ANIMASI SPRITE & IKON STATUS)
 # ==========================================
 class BattleView(arcade.View):
-    def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list):
+    def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list, endless_floor=0):
         super().__init__()
+        self.endless_floor = endless_floor
         self.player_party = player_party
         self.enemy_party = enemy_party
         self.difficulty = difficulty
@@ -1238,7 +1258,10 @@ class BattleView(arcade.View):
             alive_enemies = [i for i, c in enumerate(self.enemy_party) if c.current_hp > 0]
             if not alive_enemies:
                 self.manager.disable()
-                self.window.show_view(GameOverView("Tim Pemain", "Tim Musuh", self.p1_active.current_hp, True, self.difficulty, self.player_types))
+                if self.endless_floor > 0:
+                    self.window.show_view(EndlessRewardView(self.player_party, self.endless_floor, self.player_types))
+                else:
+                    self.window.show_view(GameOverView("Tim Pemain", "Tim Musuh", self.p1_active.current_hp, True, self.difficulty, self.player_types))
                 return True
             else:
                 self.p2_idx = alive_enemies[0] 
@@ -1557,6 +1580,181 @@ class BattleView(arcade.View):
             arcade.draw_polygon_filled(points, current_flash_color)
 
 # ==========================================
+# LAYAR PEMILIHAN KARAKTER KHUSUS ENDLESS (3v3)
+# ==========================================
+class EndlessCharacterSelectionView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.party_size = 3
+        self.difficulty = "Endless"
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+
+        self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
+        
+        self.element_map = {
+            "Emperor": "🔴", "Mage": "🔴",       
+            "Gladiator": "🔵", "Knight": "🔵",     
+            "Assassin": "🌿", "Valkyrie": "🌿"    
+        }
+
+        self.char_info = {
+            "Emperor": {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker", "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)", "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
+            "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
+            "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
+            "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
+            "Knight": {"stats": "HP: 180 | ATK: 10 | DEF: 20", "role": "Pure Tank", "passive": "Aegis Aura (+15% DEF untuk seluruh Tim)", "ulti": "Holy Judgement (DMG dihitung dari 2x DEF)"},
+            "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
+        }
+
+        self.player_party = []
+        self.last_player_char = None
+        self.preview_sprite = None # Untuk menyimpan gambar besar
+
+        self.build_ui()
+
+    def get_synergy(self, party):
+        if len(party) < 3:
+            return "Butuh 3 Karakter", arcade.color.DARK_GRAY
+        elements = [self.element_map[char] for char in party]
+        counts = {e: elements.count(e) for e in set(elements)}
+        if counts.get("🔴", 0) == 3: return "🔥 INFERNO (+20% ATK)", arcade.color.RED
+        if counts.get("🔵", 0) == 3: return "🌊 OCEANIC (Regen 5% HP)", arcade.color.LIGHT_BLUE
+        if counts.get("🌿", 0) == 3: return "🍃 NATURE (+20% DEF)", arcade.color.LIGHT_GREEN
+        if len(counts) == 3: return "✨ TRINITY (Kebal Debuff)", arcade.color.GOLD
+        return "❌ Tidak Ada Sinergi", arcade.color.LIGHT_GRAY
+
+    def build_ui(self):
+        self.manager.clear()
+        
+        # 1. PANEL KIRI: PEMILIHAN TIM PEMAIN
+        left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        left_panel.add(arcade.gui.UILabel(text=f"TIM ENDLESS ANDA ({len(self.player_party)}/3)", font_size=18, bold=True, text_color=arcade.color.LIGHT_BLUE))
+
+        p_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+        p_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+
+        for i, char in enumerate(self.available_characters):
+            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {self.element_map[char]}", width=80, height=40)
+            btn.on_click = self.make_select_action(char)
+            if i % 2 == 0: p_col1.add(btn)
+            else: p_col2.add(btn)
+            
+        p_grid.add(p_col1)
+        p_grid.add(p_col2)
+        left_panel.add(p_grid)
+
+        left_panel.add(arcade.gui.UILabel(text="", height=20))
+        
+        if self.player_party:
+            undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal Pilihan Terakhir", width=200, height=40)
+            undo_btn.on_click = self.on_undo
+            left_panel.add(undo_btn)
+            
+        left_panel.add(arcade.gui.UILabel(text="", height=20))
+        syn_name, syn_color = self.get_synergy(self.player_party)
+        left_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=14, text_color=arcade.color.WHITE))
+        left_panel.add(arcade.gui.UILabel(text=syn_name, font_size=16, bold=True, text_color=syn_color))
+
+        anchor_left = arcade.gui.UIAnchorLayout()
+        anchor_left.add(child=left_panel, anchor_x="left", anchor_y="center", align_x=40)
+        self.manager.add(anchor_left)
+
+        # 2. PANEL TENGAH: KONTROL
+        center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        title = arcade.gui.UILabel(text="ENDLESS TOWER", font_size=32, bold=True, text_color=arcade.color.CRIMSON)
+        center_panel.add(title)
+        center_panel.add(arcade.gui.UILabel(text="Hadapi musuh tanpa batas!", font_size=14, text_color=arcade.color.LIGHT_GRAY))
+        center_panel.add(arcade.gui.UILabel(text="", height=20))
+
+        if len(self.player_party) == 3:
+            ready_btn = arcade.gui.UIFlatButton(text="⚔️ MASUK KE MENARA", width=200, height=50)
+            ready_btn.on_click = self.on_ready
+            center_panel.add(ready_btn)
+        else:
+            center_panel.add(arcade.gui.UIFlatButton(text="Pilih 3 Karakter...", width=200, height=50))
+
+        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=200)
+        back_btn.on_click = self.on_back_click
+        center_panel.add(back_btn)
+
+        anchor_center = arcade.gui.UIAnchorLayout()
+        anchor_center.add(child=center_panel, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor_center)
+
+        # 3. PANEL KANAN: INFO DETAIL (Sprite akan digambar di on_draw)
+        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        if self.last_player_char:
+            info = self.char_info[self.last_player_char]
+            right_panel.add(arcade.gui.UILabel(text=f"{self.element_map[self.last_player_char]} {self.last_player_char}", font_size=24, bold=True, text_color=arcade.color.GOLD))
+            right_panel.add(arcade.gui.UILabel(text=f"Role: {info['role']}", font_size=14, text_color=arcade.color.WHITE))
+            right_panel.add(arcade.gui.UILabel(text=f"Stats: {info['stats']}", font_size=12, text_color=arcade.color.LIGHT_GRAY))
+            right_panel.add(arcade.gui.UILabel(text="", height=10))
+            
+            # Text area untuk Pasif dan Ultimate
+            desc_text = f"🌟 Pasif:\n{info['passive']}\n\n🔥 Ultimate:\n{info['ulti']}"
+            right_panel.add(arcade.gui.UILabel(text=desc_text, font_size=12, text_color=arcade.color.WHITE, multiline=True, width=300))
+            
+            # Load Sprite Besar
+            import os
+            file_path = f"assets/{self.last_player_char.lower()}.png"
+            if os.path.exists(file_path):
+                self.preview_sprite = arcade.Sprite(file_path, scale=2.0) # Ukuran dibesarkan 2x lipat
+            else:
+                self.preview_sprite = arcade.SpriteSolidColor(250, 350, arcade.color.CRIMSON)
+
+        anchor_right = arcade.gui.UIAnchorLayout()
+        anchor_right.add(child=right_panel, anchor_x="right", anchor_y="bottom", align_x=-40, align_y=40)
+        self.manager.add(anchor_right)
+
+    def make_select_action(self, char_name):
+        def action(event):
+            if len(self.player_party) < self.party_size:
+                self.player_party.append(char_name)
+                self.last_player_char = char_name
+                self.build_ui()
+        return action
+
+    def on_undo(self, event):
+        if self.player_party:
+            self.player_party.pop()
+            self.last_player_char = self.player_party[-1] if self.player_party else None
+            self.preview_sprite = None
+            self.build_ui()
+
+    def on_ready(self, event):
+        import random
+        self.manager.disable()
+        
+        # GENERATE MUSUH ACAK UNTUK AWALAN ENDLESS
+        enemy_party = []
+        for _ in range(3):
+            enemy_party.append(random.choice(self.available_characters))
+            
+        from gui.views import EquipmentSelectionView
+        # Lempar ke Equipment Selection, dengan difficulty "Endless"
+        self.window.show_view(EquipmentSelectionView(self.player_party, enemy_party, "Endless"))
+
+    def on_back_click(self, event):
+        self.manager.disable()
+        self.window.show_view(ModeSelectionView())
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.EERIE_BLACK)
+
+    def on_draw(self):
+        self.clear()
+        
+        # Gambar siluet/sprite besar di kanan atas
+        if self.preview_sprite:
+            self.preview_sprite.center_x = self.window.width * 0.85
+            self.preview_sprite.center_y = self.window.height * 0.65
+            self.preview_sprite.draw()
+            
+        self.manager.draw()
+
+# ==========================================
 # 7. LAYAR RIWAYAT PERTANDINGAN
 # ==========================================
 class HistoryView(arcade.View):
@@ -1598,6 +1796,93 @@ class HistoryView(arcade.View):
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EIGHTEEN_PERCENT_GREY if hasattr(arcade.color, 'EIGHTEEN_PERCENT_GREY') else arcade.color.DARK_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
+
+# ==========================================
+# LAYAR REWARD ENDLESS TOWER
+# ==========================================
+class EndlessRewardView(arcade.View):
+    def __init__(self, surviving_party, cleared_floor, player_types):
+        super().__init__()
+        self.surviving_party = surviving_party
+        self.cleared_floor = cleared_floor
+        self.player_types = player_types
+        
+        # Hadiah bertambah seiring tingginya lantai
+        self.gold_reward = 100 * self.cleared_floor
+        
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.build_ui()
+
+    def build_ui(self):
+        self.manager.clear()
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        
+        v_box.add(arcade.gui.UILabel(text=f"LANTAI {self.cleared_floor} DITAKLUKKAN!", font_size=32, bold=True, text_color=arcade.color.GOLD))
+        v_box.add(arcade.gui.UILabel(text=f"Hadiah Sementara: {self.gold_reward} Gold", font_size=18, text_color=arcade.color.YELLOW))
+        v_box.add(arcade.gui.UILabel(text="Hati-hati! Jika Anda kalah di lantai berikutnya, semua hadiah hilang!", font_size=12, text_color=arcade.color.LIGHT_GRAY))
+        v_box.add(arcade.gui.UILabel(text="", height=20))
+        
+        btn_next = arcade.gui.UIFlatButton(text=f"⚔️ Lanjut Lantai {self.cleared_floor + 1}", width=250)
+        btn_next.on_click = self.on_next_floor
+        
+        btn_home = arcade.gui.UIFlatButton(text="💰 Ambil Gold & Pulang", width=250)
+        btn_home.on_click = self.on_home
+        
+        v_box.add(btn_next)
+        v_box.add(btn_home)
+        
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    def on_next_floor(self, event):
+        import random
+        from engine.factory import CharacterFactory
+        from models.equipment import Equipment
+        from engine.gacha_system import GachaSystem
+        from models.synergy import SynergyBuff
+
+        # BANGUN MUSUH YANG LEBIH KUAT
+        new_floor = self.cleared_floor + 1
+        available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
+        enemy_party = []
+        
+        # Scaling brutal (Level musuh naik tajam tiap lantai)
+        enemy_level = max(1, new_floor // 2)
+        stat_mult = 1.0 + (new_floor * 0.15) 
+        
+        for i in range(3):
+            char_type = random.choice(available_chars)
+            char = CharacterFactory.create_character(char_type, f"Lantai {new_floor} {char_type}")
+            char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
+            
+            # Musuh selalu pakai equipment Legendary/Mythic jika lantai tinggi
+            random_eq = random.choice(list(GachaSystem.ITEM_POOL.keys()))
+            eq_data = GachaSystem.ITEM_POOL[random_eq]
+            char = Equipment(char, random_eq, eq_data["bonus_atk"], eq_data["bonus_def"])
+            
+            enemy_party.append(char)
+
+        # Berangkat ke arena lagi dengan TIM YANG SAMA (HP tidak di-reset)
+        self.manager.disable()
+        self.window.show_view(BattleView(self.surviving_party, enemy_party, "Endless", self.player_types, endless_floor=new_floor))
+
+    def on_home(self, event):
+        # Simpan uang ke Save Data
+        from engine.save_manager import SaveManager
+        SaveManager.add_gold(self.gold_reward)
+        
+        from gui.views import MainMenuView
+        self.manager.disable()
+        self.window.show_view(MainMenuView())
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
 
     def on_draw(self):
         self.clear()

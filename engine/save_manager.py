@@ -2,46 +2,106 @@
 import json
 import os
 
-SAVE_FILE = "save_data.json"
-
-# Tambahkan "gold_reward" di aturan kesulitan
+# ==========================================
+# FIX BUG: PENAMBAHAN 'exp_mult' UNTUK LAYAR KEMENANGAN
+# ==========================================
 DIFFICULTY_SETTINGS = {
-    "EASY": {"enemy_cap": 10, "stat_mult": 0.8, "exp_mult": 1.0, "gold_reward": 50},
-    "MEDIUM": {"enemy_cap": 30, "stat_mult": 1.0, "exp_mult": 1.5, "gold_reward": 100},
-    "HARD": {"enemy_cap": 100, "stat_mult": 1.3, "exp_mult": 2.5, "gold_reward": 150}
+    # Versi Bahasa Inggris
+    "EASY": {"stat_mult": 0.8, "enemy_cap": 10, "exp_mult": 0.8, "gold_reward": 50},
+    "NORMAL": {"stat_mult": 1.0, "enemy_cap": 50, "exp_mult": 1.0, "gold_reward": 100},
+    "HARD": {"stat_mult": 1.3, "enemy_cap": 99, "exp_mult": 1.5, "gold_reward": 200},
+
+    # Versi Bahasa Indonesia
+    "Mudah": {"stat_mult": 0.8, "enemy_cap": 10, "exp_mult": 0.8, "gold_reward": 50},
+    "Normal": {"stat_mult": 1.0, "enemy_cap": 50, "exp_mult": 1.0, "gold_reward": 100},
+    "Sulit": {"stat_mult": 1.3, "enemy_cap": 99, "exp_mult": 1.5, "gold_reward": 200},
+
+    # Mode Endless (Bonus EXP sedikit lebih besar)
+    "Endless": {"stat_mult": 1.0, "enemy_cap": 99, "exp_mult": 1.2, "gold_reward": 150} 
 }
 
 class SaveManager:
-    """Manajer I/O untuk Persistensi Data RPG"""
-    
-    @staticmethod
-    def load_data():
-        if not os.path.exists(SAVE_FILE):
-            return {"characters": {}, "gold": 0, "inventory": []}
-            
-        with open(SAVE_FILE, "r") as f:
-            data = json.load(f)
-            
-            # MIGRASI STRUKTUR LAMA: Jika data lama tidak punya "characters"
-            if "characters" not in data:
-                migrated_data = {"characters": data, "gold": 0, "inventory": []}
-                return migrated_data
-                
-            return data
+    FILE_PATH = "save_data.json"
 
     @staticmethod
-    def save_data(data):
-        with open(SAVE_FILE, "w") as f:
+    def _load():
+        if os.path.exists(SaveManager.FILE_PATH):
+            try:
+                with open(SaveManager.FILE_PATH, "r") as f:
+                    return json.load(f)
+            except:
+                pass
+        return {"inventory": [], "gold": 500} 
+
+    @staticmethod
+    def _save(data):
+        with open(SaveManager.FILE_PATH, "w") as f:
             json.dump(data, f, indent=4)
 
     @staticmethod
+    def add_equipment(item_name: str):
+        data = SaveManager._load()
+        if "inventory" not in data:
+            data["inventory"] = []
+        data["inventory"].append(item_name)
+        SaveManager._save(data)
+
+    # ---> FUNGSI INI YANG SEBELUMNYA HILANG <---
+    @staticmethod
+    def get_inventory():
+        data = SaveManager._load()
+        return data.get("inventory", [])
+
+    @staticmethod
+    def get_gold():
+        return SaveManager._load().get("gold", 500)
+
+    @staticmethod
+    def add_gold(amount):
+        data = SaveManager._load()
+        data["gold"] = data.get("gold", 500) + amount
+        SaveManager._save(data)
+
+    @staticmethod
+    def deduct_gold(amount):
+        data = SaveManager._load()
+        current = data.get("gold", 500)
+        if current >= amount:
+            data["gold"] = current - amount
+            SaveManager._save(data)
+            return True
+        return False
+    
+    # ---> TAMBAHKAN FUNGSI INI DI BAGIAN BAWAH KELAS SaveManager <---
+    @staticmethod
     def get_character_data(char_type: str):
-        data = SaveManager.load_data()
-        return data["characters"].get(char_type, {"level": 1, "exp": 0})
+        """Mengambil data level dan EXP karakter dari save data."""
+        data = SaveManager._load()
+        # Jika belum ada data 'characters' di file save, buat dictionary kosong
+        characters_data = data.get("characters", {})
+        
+        # Kembalikan data karakter, jika belum ada, beri default level 1
+        return characters_data.get(char_type, {"level": 1, "exp": 0})
+        
+    @staticmethod
+    def save_character_data(char_type: str, level: int, exp: int):
+        """Menyimpan progress level karakter (jika dibutuhkan setelah menang)."""
+        data = SaveManager._load()
+        if "characters" not in data:
+            data["characters"] = {}
+            
+        data["characters"][char_type] = {"level": level, "exp": exp}
+        SaveManager._save(data)
 
     @staticmethod
     def add_exp(char_type: str, amount: int):
-        data = SaveManager.load_data()
+        # FIX: Gunakan _load() bukan load_data()
+        data = SaveManager._load()
+        
+        # Pastikan dictionary 'characters' sudah ada
+        if "characters" not in data:
+            data["characters"] = {}
+            
         if char_type not in data["characters"]:
             data["characters"][char_type] = {"level": 1, "exp": 0}
 
@@ -57,54 +117,7 @@ class SaveManager:
             max_exp = char_data["level"] * 100
             leveled_up = True
 
-        SaveManager.save_data(data)
+        # FIX: Gunakan _save() bukan save_data()
+        SaveManager._save(data)
+        
         return char_data["level"], leveled_up
-
-    # --- FITUR BARU: MANAJEMEN GOLD ---
-    @staticmethod
-    def add_gold(amount: int):
-        data = SaveManager.load_data()
-        data["gold"] += amount
-        SaveManager.save_data(data)
-        return data["gold"]
-
-    @staticmethod
-    def get_gold():
-        return SaveManager.load_data().get("gold", 0)
-
-    # --- FITUR BARU: MANAJEMEN INVENTORY (Persiapan Tahap 2) ---
-    @staticmethod
-    def add_item_to_inventory(item_name: str):
-        data = SaveManager.load_data()
-        data["inventory"].append(item_name)
-        SaveManager.save_data(data)
-        
-    @staticmethod
-    def get_inventory():
-        return SaveManager.load_data().get("inventory", [])
-    
-    @staticmethod
-    def add_equipment(item_name: str):
-        """Menambahkan item baru ke dalam inventory pemain di file JSON."""
-        import json
-        import os
-        
-        file_path = "save_data.json" # Sesuaikan dengan nama file save Anda
-        
-        # 1. Baca data lama
-        if os.path.exists(file_path):
-            with open(file_path, "r") as f:
-                data = json.load(f)
-        else:
-            data = {}
-            
-        # 2. Buat list inventory jika belum pernah ada
-        if "inventory" not in data:
-            data["inventory"] = []
-            
-        # 3. Masukkan item baru
-        data["inventory"].append(item_name)
-        
-        # 4. Tulis kembali ke file
-        with open(file_path, "w") as f:
-            json.dump(data, f, indent=4)

@@ -126,7 +126,8 @@ class Emperor(Character):
 
 class Gladiator(Character):
     def __init__(self, name="Gladiator"):
-        super().__init__(name, 150, 12, 8, 10, "Air")
+        # NERF STATS: HP turun drastis (150 -> 115) dan DEF bocor (8 -> 4). ATK naik (12 -> 14).
+        super().__init__(name, 115, 14, 4, 10, "Air")
         self.bloodlust_stacks = 0
 
     def on_turn_start(self):
@@ -146,8 +147,10 @@ class Gladiator(Character):
     def use_ultimate(self, target, enemy_party=None, ally_party=None):
         dmg = target.take_damage(self.base_attack * 3.5, self)
         log = f"mengeksekusi ARENA EXECUTION! ({dmg} DMG)"
+        
+        # NERF ULTIMATE: Heal saat membunuh musuh dipangkas dari 40% menjadi hanya 15%.
         if target.current_hp <= 0:
-            heal_amt = int(self._max_hp * 0.4)
+            heal_amt = int(self._max_hp * 0.15)
             self.heal(heal_amt)
             log += f"\nGladiator memulihkan {heal_amt} HP!"
         return dmg, log
