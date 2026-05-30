@@ -362,6 +362,22 @@ class GachaView(arcade.View):
         
         self.build_ui()
 
+        # ==========================================
+        # MUAT SFX KLIK UNTUK MENU INI
+        # ==========================================
+        import os
+        click_path = "assets/sfx/gacha.mp3"
+        if os.path.exists(click_path):
+            self.sfx_click = arcade.load_sound(click_path)
+        else:
+            self.sfx_click = None
+
+        click_path2 = "assets/sfx/click.mp3"
+        if os.path.exists(click_path2):
+            self.sfx_click2 = arcade.load_sound(click_path2)
+        else:
+            self.sfx_click = None
+
     def build_ui(self):
         from engine.save_manager import SaveManager
         self.manager.clear()
@@ -401,6 +417,8 @@ class GachaView(arcade.View):
         else: return arcade.color.WHITE
 
     def on_pull_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click:
+            arcade.play_sound(self.sfx_click, volume=0.5)
         from engine.gacha_system import GachaSystem
         from engine.save_manager import SaveManager
 
@@ -436,6 +454,8 @@ class GachaView(arcade.View):
         self.error_msg = ""
 
     def on_back_click(self, event):
+        if hasattr(self, 'sfx_click') and self.sfx_click2:
+            arcade.play_sound(self.sfx_click2, volume=0.5)
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
