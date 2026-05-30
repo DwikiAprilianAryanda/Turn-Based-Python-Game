@@ -1609,7 +1609,10 @@ class EndlessCharacterSelectionView(arcade.View):
 
         self.player_party = []
         self.last_player_char = None
-        self.preview_sprite = None # Untuk menyimpan gambar besar
+        self.preview_sprite = None 
+        
+        # FIX ARCADE 3.0: Siapkan wadah untuk menggambar sprite
+        self.sprite_list = arcade.SpriteList()
 
         self.build_ui()
 
@@ -1683,7 +1686,7 @@ class EndlessCharacterSelectionView(arcade.View):
         anchor_center.add(child=center_panel, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_center)
 
-        # 3. PANEL KANAN: INFO DETAIL (Sprite akan digambar di on_draw)
+        # 3. PANEL KANAN: INFO DETAIL
         right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
         if self.last_player_char:
             info = self.char_info[self.last_player_char]
@@ -1692,17 +1695,19 @@ class EndlessCharacterSelectionView(arcade.View):
             right_panel.add(arcade.gui.UILabel(text=f"Stats: {info['stats']}", font_size=12, text_color=arcade.color.LIGHT_GRAY))
             right_panel.add(arcade.gui.UILabel(text="", height=10))
             
-            # Text area untuk Pasif dan Ultimate
             desc_text = f"🌟 Pasif:\n{info['passive']}\n\n🔥 Ultimate:\n{info['ulti']}"
             right_panel.add(arcade.gui.UILabel(text=desc_text, font_size=12, text_color=arcade.color.WHITE, multiline=True, width=300))
             
-            # Load Sprite Besar
+            # FIX ARCADE 3.0: Penulisan args SpriteSolidColor & SpriteList
             import os
             file_path = f"assets/{self.last_player_char.lower()}.png"
             if os.path.exists(file_path):
-                self.preview_sprite = arcade.Sprite(file_path, scale=2.0) # Ukuran dibesarkan 2x lipat
+                self.preview_sprite = arcade.Sprite(file_path, scale=2.0) 
             else:
-                self.preview_sprite = arcade.SpriteSolidColor(250, 350, arcade.color.CRIMSON)
+                self.preview_sprite = arcade.SpriteSolidColor(width=250, height=350, color=arcade.color.CRIMSON)
+                
+            self.sprite_list.clear()
+            self.sprite_list.append(self.preview_sprite)
 
         anchor_right = arcade.gui.UIAnchorLayout()
         anchor_right.add(child=right_panel, anchor_x="right", anchor_y="bottom", align_x=-40, align_y=40)
@@ -1721,23 +1726,23 @@ class EndlessCharacterSelectionView(arcade.View):
             self.player_party.pop()
             self.last_player_char = self.player_party[-1] if self.player_party else None
             self.preview_sprite = None
+            self.sprite_list.clear()
             self.build_ui()
 
     def on_ready(self, event):
         import random
         self.manager.disable()
         
-        # GENERATE MUSUH ACAK UNTUK AWALAN ENDLESS
         enemy_party = []
         for _ in range(3):
             enemy_party.append(random.choice(self.available_characters))
             
         from gui.views import EquipmentSelectionView
-        # Lempar ke Equipment Selection, dengan difficulty "Endless"
         self.window.show_view(EquipmentSelectionView(self.player_party, enemy_party, "Endless"))
 
     def on_back_click(self, event):
         self.manager.disable()
+        from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
 
     def on_show_view(self):
@@ -1746,11 +1751,11 @@ class EndlessCharacterSelectionView(arcade.View):
     def on_draw(self):
         self.clear()
         
-        # Gambar siluet/sprite besar di kanan atas
+        # FIX ARCADE 3.0: Menggambar menggunakan SpriteList
         if self.preview_sprite:
             self.preview_sprite.center_x = self.window.width * 0.85
             self.preview_sprite.center_y = self.window.height * 0.65
-            self.preview_sprite.draw()
+            self.sprite_list.draw() 
             
         self.manager.draw()
 
