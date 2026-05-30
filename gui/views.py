@@ -1468,6 +1468,30 @@ class BattleView(arcade.View):
         # Muat gambar karakter untuk pertama kalinya
         self.refresh_sprites()
 
+        # ==========================================
+        # SISTEM AUDIO (BGM & SFX)
+        # ==========================================
+        self.bgm_player = None
+        bgm_path = "assets/bgm/battle_theme.mp3" 
+        
+        import os
+        if os.path.exists(bgm_path):
+            self.bgm = arcade.load_sound(bgm_path)
+            # Mainkan BGM otomatis (looping) dengan volume 40%
+            self.bgm_player = arcade.play_sound(self.bgm, volume=0.4, loop=True)
+        else:
+            print("❌ INFO: BGM assets/bgm/battle_theme.mp3 tidak ditemukan.")
+
+        # Fungsi pintar untuk memuat SFX
+        def load_sfx(name):
+            path = f"assets/sfx/{name}"
+            return arcade.load_sound(path) if os.path.exists(path) else None
+
+        self.sfx_attack = load_sfx("attack.wav")
+        self.sfx_skill = load_sfx("skill.wav")
+        self.sfx_heal = load_sfx("heal.wav")
+        self.sfx_ulti = load_sfx("ulti.wav")
+
     def refresh_sprites(self):
         """Memuat ulang gambar karakter yang sedang aktif di arena."""
         if not hasattr(self, 'battler_sprites'):
@@ -1692,6 +1716,8 @@ class BattleView(arcade.View):
             alive_enemies = [i for i, c in enumerate(self.enemy_party) if c.current_hp > 0]
             if not alive_enemies:
                 self.manager.disable()
+                if self.bgm_player:
+                    arcade.stop_sound(self.bgm_player)
                 if self.endless_floor > 0:
                     self.window.show_view(EndlessRewardView(self.player_party, self.endless_floor, self.player_types))
                 else:
@@ -1712,6 +1738,8 @@ class BattleView(arcade.View):
             alive_players = [i for i, c in enumerate(self.player_party) if c.current_hp > 0]
             if not alive_players:
                 self.manager.disable()
+                if self.bgm_player:
+                    arcade.stop_sound(self.bgm_player)
                 self.window.show_view(GameOverView("Tim Musuh", "Tim Pemain", self.p2_active.current_hp, False, self.difficulty, self.player_types))
                 return True
             else:
@@ -1729,7 +1757,11 @@ class BattleView(arcade.View):
     def on_attack_click(self, event):
         if not self.is_player_turn: return 
         if self.current_turn == self.p1_active:
-            self.attack_anim_timer = 0.3 # Memicu Animasi Serangan
+            # --- MAIN SFX ATTACK ---
+            if hasattr(self, 'sfx_attack') and self.sfx_attack:
+                arcade.play_sound(self.sfx_attack, volume=0.8)
+                
+            self.attack_anim_timer = 0.3 
             self.attacking_side = 1
             
             from engine.commands import BasicAttackCommand
@@ -1759,6 +1791,10 @@ class BattleView(arcade.View):
     def on_skill_click(self, event):
         if not self.is_player_turn: return 
         if self.current_turn == self.p1_active:
+            # --- MAIN SFX SKILL ---
+            if hasattr(self, 'sfx_skill') and self.sfx_skill:
+                arcade.play_sound(self.sfx_skill, volume=0.9)
+                
             self.attack_anim_timer = 0.4 
             self.attacking_side = 1
             
@@ -1779,6 +1815,10 @@ class BattleView(arcade.View):
     def on_item_click(self, event):
         if not self.is_player_turn: return 
         if self.current_turn == self.p1_active:
+            # --- MAIN SFX HEAL ---
+            if hasattr(self, 'sfx_heal') and self.sfx_heal:
+                arcade.play_sound(self.sfx_heal, volume=1.0)
+                
             from engine.commands import UseItemCommand
             from models.item import HealthPotion
             potion = HealthPotion()
@@ -1802,6 +1842,10 @@ class BattleView(arcade.View):
                 self.p1_log = log_msg 
                 self.spawn_floating_text("NOT READY!", self.p1_base_x, self.base_y, arcade.color.GRAY)
             else:
+                # --- MAIN SFX ULTIMATE ---
+                if hasattr(self, 'sfx_ulti') and self.sfx_ulti:
+                    arcade.play_sound(self.sfx_ulti, volume=1.0)
+                    
                 self.attack_anim_timer = 0.6 
                 self.attacking_side = 1
                 self.p1_log = log_msg
