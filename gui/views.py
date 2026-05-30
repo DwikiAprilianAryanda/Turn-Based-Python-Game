@@ -164,13 +164,30 @@ class MainMenuView(arcade.View):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        
+        # --- PERSIAPAN BACKGROUND ---
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        bg_path = "assets/bg/menu_bg.jpg" 
+        
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            # FIX: Baca ukuran jendela secara dinamis
+            self.bg_sprite.center_x = self.window.width / 2 
+            self.bg_sprite.center_y = self.window.height / 2 
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
+            
         self.build_ui()
 
     def build_ui(self):
         self.manager.clear()
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
 
-        title = arcade.gui.UILabel(text="EPIC TURN-BASED ARENA", font_size=36, bold=True, text_color=arcade.color.GOLD)
+        title = arcade.gui.UILabel(text="FIHGTING ARENA", font_size=36, bold=True, text_color=arcade.color.GOLD)
         v_box.add(title)
         v_box.add(arcade.gui.UILabel(text="", height=10))
 
@@ -227,7 +244,24 @@ class MainMenuView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        
+        # Gambar background terlebih dahulu agar berada di posisi paling belakang (dasar)
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
+            
+        # Gambar tombol dan UI di atasnya
         self.manager.draw()
+
+    def on_resize(self, width: int, height: int):
+        """Fungsi bawaan Arcade yang dipanggil saat layar berubah ukuran."""
+        super().on_resize(width, height)
+        
+        # Paksa gambar background menyesuaikan ukuran layar baru
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # LAYAR GACHA (UPDATE: SPRITELIST FIX)
@@ -1158,12 +1192,33 @@ class InventoryView(arcade.View):
 class BattleView(arcade.View):
     def __init__(self, player_party: list, enemy_party: list, difficulty: str, player_types: list, endless_floor=0):
         super().__init__()
+        
         self.endless_floor = endless_floor
         self.player_party = player_party
         self.enemy_party = enemy_party
         self.difficulty = difficulty
         self.player_types = player_types 
         
+        # --- PERSIAPAN BACKGROUND DINAMIS ---
+        self.bg_sprite_list = arcade.SpriteList()
+        import os
+        
+        # Cek Mode: Jika Endless, pakai gambar khusus Endless!
+        if self.difficulty == "Endless":
+            bg_path = "assets/bg/endless_arena.png"
+        else:
+            bg_path = "assets/bg/arena_bg.jpg" 
+        
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width = self.window.width
+            self.bg_sprite.height = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
+
         self.p1_idx = 0
         self.p2_idx = 0
         self.p1_active = self.player_party[self.p1_idx]
@@ -1661,6 +1716,9 @@ class BattleView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        # MENGGAMBAR BACKGROUND ARENA
+        if self.bg_sprite:
+            self.bg_sprite_list.draw()
         self.character_sprites.draw()
         
         # ==========================================
@@ -1716,6 +1774,17 @@ class BattleView(arcade.View):
             sh = self.window.height
             points = ((0, 0), (sw, 0), (sw, sh), (0, sh))
             arcade.draw_polygon_filled(points, current_flash_color)
+
+    def on_resize(self, width: int, height: int):
+        """Fungsi bawaan Arcade yang dipanggil saat layar berubah ukuran."""
+        super().on_resize(width, height)
+        
+        # Paksa gambar background menyesuaikan ukuran layar baru
+        if hasattr(self, 'bg_sprite') and self.bg_sprite:
+            self.bg_sprite.center_x = width / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width = width
+            self.bg_sprite.height = height
 
 # ==========================================
 # LAYAR PEMILIHAN KARAKTER KHUSUS ENDLESS (3v3)
