@@ -1493,15 +1493,15 @@ class BattleView(arcade.View):
         
         if p1_path:
             self.p1_sprite = arcade.Sprite(p1_path)
-            # FIX UKURAN: Hitung scale agar tinggi gambar menjadi 280 pixel
-            self.p1_base_scale = 280 / self.p1_sprite.texture.height
+            # Kunci tinggi karakter di 360 pixel
+            self.p1_base_scale = 360 / self.p1_sprite.texture.height
             self.p1_sprite.scale = self.p1_base_scale
         else:
             self.p1_sprite = arcade.SpriteSolidColor(width=120, height=180, color=arcade.color.CYAN)
             self.p1_base_scale = 1.0 # Cadangan jika tidak ada gambar
             
         self.p1_sprite.center_x = self.p1_base_x
-        self.p1_sprite.center_y = self.base_y + 10  
+        self.p1_sprite.center_y = self.base_y + 130  
         self.battler_sprites.append(self.p1_sprite)
 
         # 2. SETUP GAMBAR MUSUH (KANAN)
@@ -1510,7 +1510,7 @@ class BattleView(arcade.View):
         
         if p2_path:
             self.p2_sprite = arcade.Sprite(p2_path)
-            self.p2_base_scale = 280 / self.p2_sprite.texture.height
+            self.p2_base_scale = 360 / self.p2_sprite.texture.height
             self.p2_sprite.scale = self.p2_base_scale
             self.p2_sprite.texture = self.p2_sprite.texture.flip_left_right()
         else:
@@ -1518,26 +1518,69 @@ class BattleView(arcade.View):
             self.p2_base_scale = 1.0
             
         self.p2_sprite.center_x = self.p2_base_x
-        self.p2_sprite.center_y = self.base_y + 10
+        self.p2_sprite.center_y = self.base_y + 130
         self.battler_sprites.append(self.p2_sprite)
 
     def build_ui(self):
         self.manager.clear()
         
+        # ==========================================
+        # FUNGSI KREATIF: Membuat Kartu Roster Wajah + Mini Bar
+        # ==========================================
+        def create_roster_card(char, status, click_action=None):
+            card = arcade.gui.UIBoxLayout(vertical=False, space_between=8)
+            
+            # 1. Cari Gambar Wajah (Portrait)
+            import os
+            base_name = char.name.split()[0].lower()
+            face_tex = None
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{base_name}_menu{ext}"
+                if os.path.exists(path):
+                    face_tex = arcade.load_texture(path)
+                    break
+            
+            # Buat Tombol Wajah
+            if face_tex:
+                btn = arcade.gui.UITextureButton(texture=face_tex, width=55, height=55)
+            else:
+                btn = arcade.gui.UIFlatButton(text=base_name[:3], width=55, height=55)
+                
+            if click_action and status != "DEAD":
+                btn.on_click = click_action
+            card.add(btn)
+            
+            # 2. Buat Info Status & Mini Bar Retro
+            info = arcade.gui.UIBoxLayout(vertical=True)
+            if status == "DEAD":
+                info.add(arcade.gui.UILabel(text="💀 DEAD", text_color=arcade.color.GRAY, font_size=12, bold=True))
+            else:
+                prefix = "▶ " if status == "ACTIVE" else "🔄 "
+                color = arcade.color.YELLOW if status == "ACTIVE" else arcade.color.WHITE
+                info.add(arcade.gui.UILabel(text=f"{prefix}{char.name.split()[0]}", text_color=color, font_size=12, bold=True))
+                
+                # Mini Bar HP (Merah)
+                hp_bars = int((max(0, char.current_hp) / char._max_hp) * 10)
+                hp_str = "█" * hp_bars + "░" * (10 - hp_bars)
+                info.add(arcade.gui.UILabel(text=hp_str, text_color=arcade.color.RED, font_size=10))
+                
+                # Mini Bar Mana (Biru)
+                mp_bars = int((max(0, char.current_mana) / char._max_mana) * 10)
+                mp_str = "█" * mp_bars + "░" * (10 - mp_bars)
+                info.add(arcade.gui.UILabel(text=mp_str, text_color=arcade.color.ROYAL_BLUE, font_size=10))
+                
+            card.add(info)
+            return card
+
+        # ==========================================
+        # PENERAPAN KE PANEL KIRI & KANAN
+        # ==========================================
         # PANEL ROSTER PEMAIN (KIRI)
         left_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
         for i, char in enumerate(self.player_party):
-            if char.current_hp <= 0:
-                text = f"💀 {char.name[:6]}..\nDEAD"
-                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) 
-            elif i == self.p1_idx:
-                text = f"▶️ {char.name[:6]}..\nAktif"
-                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60) 
-            else:
-                text = f"🔄 {char.name[:6]}..\nHP: {int(char.current_hp)}"
-                btn = arcade.gui.UIFlatButton(text=text, width=120, height=60)
-                btn.on_click = self.make_swap_action(i) 
-            left_box.add(btn)
+            status = "DEAD" if char.current_hp <= 0 else ("ACTIVE" if i == self.p1_idx else "WAIT")
+            action = self.make_swap_action(i) if status == "WAIT" else None
+            left_box.add(create_roster_card(char, status, action))
             
         anchor_left = arcade.gui.UIAnchorLayout()
         anchor_left.add(child=left_box, anchor_x="left", anchor_y="center", align_x=20)
@@ -1546,22 +1589,17 @@ class BattleView(arcade.View):
         # PANEL ROSTER MUSUH (KANAN) 
         right_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
         for i, char in enumerate(self.enemy_party):
-            if char.current_hp <= 0:
-                text = f"💀 {char.name[:6]}..\nDEAD"
-            elif i == self.p2_idx:
-                text = f"▶️ {char.name[:6]}..\nAktif"
-            else:
-                text = f"⏳ {char.name[:6]}..\nMenunggu"
-            btn = arcade.gui.UIFlatButton(text=text, width=120, height=60)
-            right_box.add(btn)
+            status = "DEAD" if char.current_hp <= 0 else ("ACTIVE" if i == self.p2_idx else "WAIT")
+            right_box.add(create_roster_card(char, status, None)) # Musuh tidak bisa diklik
             
         anchor_right = arcade.gui.UIAnchorLayout()
         anchor_right.add(child=right_box, anchor_x="right", anchor_y="center", align_x=-20)
         self.manager.add(anchor_right)
 
+        # ==========================================
         # TOMBOL AKSI UTAMA (BAWAH)
+        # ==========================================
         self.h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
-        
         attack_button = arcade.gui.UIFlatButton(text="⚔️ Attack", width=120)
         skill_button = arcade.gui.UIFlatButton(text="🔥 Skill", width=120)
         item_button = arcade.gui.UIFlatButton(text="🎒 Heal", width=120)
@@ -1610,19 +1648,21 @@ class BattleView(arcade.View):
     def update_layout(self):
         sw = self.window.width
         sh = self.window.height
-        self.p1_base_x = sw * 0.35
-        self.p2_base_x = sw * 0.65
-        self.base_y = sh * 0.50
         
-        # --- FIX: HAPUS PEMUATAN GANDA, CUKUP PANGGIL REFRESH SPRITE ---
+        # FIX PRESISI 1: Geser karakter agar lebih proporsional (28% dari Kiri, 72% dari Kanan)
+        self.p1_base_x = sw * 0.28
+        self.p2_base_x = sw * 0.72
+        self.base_y = sh * 0.45
+        
         self.refresh_sprites()
 
-        # --- FIX: NAIKKAN POSISI BAR AGAR TIDAK MENUTUPI KEPALA ---
-        self.p1_hp_bar = StatusBar(self.p1_active, x=self.p1_base_x - 125, y=self.base_y + 190, width=250, height=20, is_mana=False)
-        self.p1_mana_bar = StatusBar(self.p1_active, x=self.p1_base_x - 100, y=self.base_y + 160, width=200, height=15, is_mana=True)
+        # FIX PRESISI 2: Hapus "- 125". Gunakan koordinat base_x langsung agar benar-benar di tengah!
+        # Ukuran bar juga kita rapikan.
+        self.p1_hp_bar = StatusBar(self.p1_active, x=self.p1_base_x, y=self.base_y + 200, width=220, height=18, is_mana=False)
+        self.p1_mana_bar = StatusBar(self.p1_active, x=self.p1_base_x, y=self.base_y + 175, width=180, height=12, is_mana=True)
         
-        self.p2_hp_bar = StatusBar(self.p2_active, x=self.p2_base_x - 125, y=self.base_y + 190, width=250, height=20, is_mana=False)
-        self.p2_mana_bar = StatusBar(self.p2_active, x=self.p2_base_x - 100, y=self.base_y + 160, width=200, height=15, is_mana=True)
+        self.p2_hp_bar = StatusBar(self.p2_active, x=self.p2_base_x, y=self.base_y + 200, width=220, height=18, is_mana=False)
+        self.p2_mana_bar = StatusBar(self.p2_active, x=self.p2_base_x, y=self.base_y + 175, width=180, height=12, is_mana=True)
 
     def on_resize(self, width: int, height: int):
         super().on_resize(width, height)
@@ -1962,9 +2002,9 @@ class BattleView(arcade.View):
         p1_lvl = get_real_level(self.p1_active)
         p2_lvl = get_real_level(self.p2_active)
         
-        # NAIKKAN POSISI Y MENJADI + 220
-        arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 220, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
-        arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 220, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        # Ubah posisi Y menjadi self.base_y + 230
+        arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 230, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 230, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         
         # INFO LANTAI ENDLESS (Muncul di atas tengah layar)
         if self.endless_floor > 0:
