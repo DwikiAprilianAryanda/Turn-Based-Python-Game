@@ -186,28 +186,40 @@ class Assassin(Character):
 
 class Mage(Character):
     def __init__(self, name="Mage"):
-        super().__init__(name, 80, 30, 4, 15, "Api")
+        # NERF STATS: ATK diturunkan drastis (30 -> 20). HP tetap 80 (sangat tipis).
+        super().__init__(name, 80, 20, 4, 15, "Api")
+        self.mana_shield_active = False
 
     def take_damage(self, amount, attacker=None):
-        if self.current_mana >= (self._max_mana * 0.5):
+        if self.current_mana >= (self._max_mana / 2):
             amount = int(amount * 0.75)
-            self.passive_logs += "[Mana Shield Aktif] "
+            self.passive_logs += "[Mana Shield: -25% DMG] "
         return super().take_damage(amount, attacker)
 
     def use_special_skill(self, target):
-        self.current_mana -= 30
-        return target.take_damage(self.base_attack * 2.2, self), "menembakkan Bola Api!"
+        # NERF MANA: Biaya skill naik dari 15 ke 20
+        self.current_mana -= 20
+        # Modifier serangan normal, tidak over-powered
+        dmg = target.take_damage(int(self.base_attack * 1.5), self)
+        return dmg, "melemparkan Fireball!"
 
     def use_ultimate(self, target, enemy_party=None, ally_party=None):
-        log = "memanggil METEOR SWARM!\n"
         total_dmg = 0
+        log = "memanggil METEOR SWARM!\n"
+        
+        # NERF ULTIMATE: Daya hancur area (AoE) diturunkan pengalinya menjadi 1.2x
         if enemy_party:
             for enemy in enemy_party:
                 if enemy.current_hp > 0:
-                    dmg = max(1, (self.base_attack * 2.5) - enemy.defense)
-                    enemy.current_hp -= dmg
+                    dmg = enemy.take_damage(int(self.base_attack * 1.2), self)
                     total_dmg += dmg
-        return total_dmg, log + f"Badai meteor menghasilkan {total_dmg} DMG AoE!"
+                    log += f"- {enemy.name} terkena {dmg} DMG!\n"
+        else:
+            dmg = target.take_damage(int(self.base_attack * 1.8), self)
+            total_dmg += dmg
+            log += f"{target.name} terkena {dmg} DMG!\n"
+            
+        return total_dmg, log.strip()
 
 
 class Knight(Character):

@@ -8,7 +8,7 @@ import os
 DIFFICULTY_SETTINGS = {
     # Versi Bahasa Inggris
     "EASY": {"stat_mult": 0.8, "enemy_cap": 10, "exp_mult": 0.8, "gold_reward": 50},
-    "NORMAL": {"stat_mult": 1.0, "enemy_cap": 50, "exp_mult": 1.0, "gold_reward": 100},
+    "MEDIUM": {"stat_mult": 1.0, "enemy_cap": 50, "exp_mult": 1.0, "gold_reward": 100},
     "HARD": {"stat_mult": 1.3, "enemy_cap": 99, "exp_mult": 1.5, "gold_reward": 200},
 
     # Versi Bahasa Indonesia
@@ -124,10 +124,12 @@ class SaveManager:
     
     # ---> TAMBAHKAN 3 FUNGSI INI DI PALING BAWAH KELAS SaveManager <---
     @staticmethod
-    def save_endless_state(floor: int, party_names: list):
-        """Menyimpan lantai dan tim pemain saat memutuskan keluar sementara."""
+    def save_endless_state(floor: int, party_names: list, equipments: list = None):
+        """Menyimpan lantai, tim, dan equipment pemain saat memutuskan keluar sementara."""
         data = SaveManager._load()
-        data["endless_state"] = {"floor": floor, "party": party_names}
+        if equipments is None:
+            equipments = ["Tangan Kosong"] * len(party_names)
+        data["endless_state"] = {"floor": floor, "party": party_names, "equipments": equipments}
         SaveManager._save(data)
 
     @staticmethod

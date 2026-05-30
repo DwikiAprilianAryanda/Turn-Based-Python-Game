@@ -62,43 +62,74 @@ class ModeSelectionView(arcade.View):
         from engine.factory import CharacterFactory
         from models.equipment import Equipment
         from engine.gacha_system import GachaSystem
+        from models.synergy import SynergyBuff
         import random
         
         state = SaveManager.get_endless_state()
         start_floor = state["floor"]
         party_names = state["party"]
+        equipments = state.get("equipments", ["Tangan Kosong"] * len(party_names))
 
-        # Bangun ulang tim pemain dengan HP Penuh dan Equipment Acak (Bonus Resume)
+        # --- CEK SINERGI UNTUK RESUME ---
+        element_map = {
+            "Emperor": "🔴", "Mage": "🔴",
+            "Gladiator": "🔵", "Knight": "🔵",
+            "Assassin": "🌿", "Valkyrie": "🌿"
+        }
+        def get_synergy_type(party):
+            if len(party) < 3: return None
+            elements = [element_map.get(char, "") for char in party]
+            counts = {e: elements.count(e) for e in set(elements) if e}
+            if counts.get("🔴", 0) == 3: return "INFERNO"
+            if counts.get("🔵", 0) == 3: return "OCEANIC"
+            if counts.get("🌿", 0) == 3: return "NATURE"
+            if len(counts) == 3: return "TRINITY"
+            return None
+            
+        p_synergy = get_synergy_type(party_names)
+
+        # --- BANGUN ULANG TIM PEMAIN ---
         player_party = []
-        for name in party_names:
-            char = CharacterFactory.create_character(name)
-            eq_name = random.choice(list(GachaSystem.ITEM_POOL.keys()))
-            eq_data = GachaSystem.ITEM_POOL[eq_name]
-            char = Equipment(char, eq_name, eq_data["bonus_atk"], eq_data["bonus_def"])
+        for i, char_type in enumerate(party_names):
+            char = CharacterFactory.create_character(char_type, f"{char_type} (P{i+1})")
+            
+            # Pakaikan Equipment yang benar
+            eq_name = equipments[i]
+            if eq_name != "Tangan Kosong" and eq_name in GachaSystem.ITEM_POOL:
+                eq_data = GachaSystem.ITEM_POOL[eq_name]
+                char = Equipment(char, item_name=eq_name, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
+                
+            # Kembalikan efek Sinergi
+            if p_synergy:
+                char = SynergyBuff(char, synergy_type=p_synergy)
+                
+            # FIX BUG: TEMPELKAN LABEL LAGI SAAT RESUME!
+            char.equipped_name = eq_name
+            
             player_party.append(char)
 
-        # Bangun Musuh Sesuai Lantai
+        # --- BANGUN MUSUH (Sesuai Scaling Lantai) ---
         available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         enemy_party = []
         enemy_level = max(1, start_floor // 2)
         stat_mult = 1.0 + ((start_floor - 1) * 0.1) 
         
-        for _ in range(3):
-            char_type = random.choice(available_chars)
-            char = CharacterFactory.create_character(char_type, f"Lantai {start_floor} {char_type}")
+        for i in range(3):
+            e_type = random.choice(available_chars)
+            char = CharacterFactory.create_character(e_type, f"Lantai {start_floor} {e_type}")
             if hasattr(char, 'apply_scaling'):
                 char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
             char.level = enemy_level 
             
-            # KODE BARU (Scaling cerdas)
+            # Musuh tetap dapat equipment sesuai kasta lantainya
             random_eq = GachaSystem.get_enemy_equipment("Endless", start_floor)
             eq_data = GachaSystem.ITEM_POOL[random_eq]
-            char = Equipment(char, random_eq, eq_data["bonus_atk"], eq_data["bonus_def"])
+            char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
             char.level = enemy_level
             enemy_party.append(char)
 
         from gui.views import BattleView
-        self.window.show_view(BattleView(player_party, enemy_party, "Endless", ["Player"]*3, endless_floor=start_floor))
+        self.window.show_view(BattleView(player_party, enemy_party, "Endless", party_names, endless_floor=start_floor))
 
     def on_standard_click(self, event):
         self.manager.disable()
@@ -463,7 +494,7 @@ class CharacterSelectionView(arcade.View):
             "Emperor": {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker", "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)", "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
             "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
             "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
-            "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
+            "Mage": {"stats": "HP: 80 | ATK: 20 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
             "Knight": {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank", "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)", "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
             "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
         }
@@ -873,6 +904,11 @@ class EquipmentSelectionView(arcade.View):
             # LAPISAN 2: Bungkus lagi dengan Sinergi (Hanya jika aktif)
             if p_synergy:
                 char = SynergyBuff(char, synergy_type=p_synergy)
+                
+            # ==========================================
+            # FIX BUG: TEMPELKAN LABEL NAMA SENJATA SECARA PAKSA!
+            # ==========================================
+            char.equipped_name = eq_name 
                     
             player_party.append(char)
             
@@ -890,7 +926,8 @@ class EquipmentSelectionView(arcade.View):
             import random
             # Akan otomatis menyesuaikan dengan Easy / Normal / Hard!
             random_eq = GachaSystem.get_enemy_equipment(self.difficulty, 0)
-            
+            eq_data = GachaSystem.ITEM_POOL[random_eq]
+
             # LAPISAN 1: Musuh pakai Equipment acak
             char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
             
@@ -899,6 +936,7 @@ class EquipmentSelectionView(arcade.View):
                 char = SynergyBuff(char, synergy_type=e_synergy)
                 
             enemy_party.append(char)
+            enemy_party[i] = char
 
         # 3. LEMPAR KE ARENA
         from gui.views import BattleView
@@ -1163,16 +1201,35 @@ class BattleView(arcade.View):
         if self.p1_active.passive_logs:
             self.p1_log += f"\n{self.p1_active.passive_logs}"
 
-        # --- TAMBAHKAN KODE INI DI DALAM __init__ BATTLEVIEW ---
+        # --- TERAPKAN LEVEL & SCALING STATUS PEMAIN ---
         from engine.save_manager import SaveManager
-        for char in self.player_party:
-            # Ambil nama asli jika memakai equipment
-            base_name = char.character.name if hasattr(char, 'character') else char.name
-            char.level = SaveManager.get_character_data(base_name).get("level", 1)
+        
+        # FIX: Gunakan enumerate untuk mengambil char_type asli dari self.player_types
+        for i, char in enumerate(self.player_party):
+            inner_char = char
+            while hasattr(inner_char, 'character'):
+                inner_char = inner_char.character
+                
+            # Gunakan nama asli ("Emperor"), bukan nama display ("Emperor (P1)")
+            base_name = self.player_types[i]
             
+            # Ambil level dari file JSON
+            inner_char.level = SaveManager.get_character_data(base_name).get("level", 1)
+            
+            if not getattr(inner_char, 'is_scaled', False):
+                stat_mult = 1.0 + ((inner_char.level - 1) * 0.1) 
+                if hasattr(inner_char, 'apply_scaling'):
+                    inner_char.apply_scaling(level=inner_char.level, stat_multiplier=stat_mult)
+                inner_char.is_scaled = True
+            
+        # --- ATUR LEVEL MUSUH ---
         for char in self.enemy_party:
-            if not hasattr(char, 'level'):
-                char.level = max(1, self.endless_floor // 2) if self.endless_floor > 0 else 1
+            inner_enemy = char
+            while hasattr(inner_enemy, 'character'):
+                inner_enemy = inner_enemy.character
+                
+            if not hasattr(inner_enemy, 'level'):
+                inner_enemy.level = max(1, self.endless_floor // 2) if self.endless_floor > 0 else 1
 
     # --- FUNGSI BARU: MEMUAT SPRITE GAMBAR ---
     def _load_character_sprite(self, char_name, is_player):
@@ -1606,9 +1663,17 @@ class BattleView(arcade.View):
         self.clear()
         self.character_sprites.draw()
         
-        # Nama Karakter DITAMBAH LEVEL
-        p1_lvl = getattr(self.p1_active, 'level', 1)
-        p2_lvl = getattr(self.p2_active, 'level', 1)
+        # ==========================================
+        # FIX: MENGGALI KE KARAKTER INTI UNTUK MEMBACA LEVEL ASLI
+        # ==========================================
+        def get_real_level(c):
+            inner = c
+            while hasattr(inner, 'character'): # Tembus semua lapis equipment
+                inner = inner.character
+            return getattr(inner, 'level', 1)
+
+        p1_lvl = get_real_level(self.p1_active)
+        p2_lvl = get_real_level(self.p2_active)
         
         arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
@@ -1675,7 +1740,7 @@ class EndlessCharacterSelectionView(arcade.View):
             "Emperor": {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker", "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)", "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
             "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
             "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
-            "Mage": {"stats": "HP: 80 | ATK: 30 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
+            "Mage": {"stats": "HP: 80 | ATK: 20 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
             "Knight": {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank", "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)", "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
             "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
         }
@@ -1953,14 +2018,15 @@ class EndlessRewardView(arcade.View):
 
     def on_save_quit(self, event):
         from engine.save_manager import SaveManager
-        # Ekstrak nama karakter asli dari party (mengabaikan decorator)
-        party_names = []
+        
+        equipments = []
         for char in self.surviving_party:
-            if char.current_hp > 0:
-                base_name = char.character.name if hasattr(char, 'character') else char.name
-                party_names.append(base_name)
-                
-        SaveManager.save_endless_state(self.cleared_floor + 1, party_names)
+            # Tinggal baca label yang kita tempelkan tadi, jika tidak ada, beri "Tangan Kosong"
+            eq_name = getattr(char, 'equipped_name', "Tangan Kosong")
+            equipments.append(eq_name)
+            
+        # Simpan nama karakter DAN equipment-nya
+        SaveManager.save_endless_state(self.cleared_floor + 1, self.player_types, equipments)
         
         self.manager.disable()
         from gui.views import MainMenuView
