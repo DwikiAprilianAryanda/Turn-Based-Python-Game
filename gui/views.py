@@ -639,6 +639,35 @@ class CharacterSelectionView(arcade.View):
         main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
 
         # ========================================
+        # ALAT BANTU: Pencari Gambar Khusus Menu
+        # ========================================
+        def get_portrait_widget(char_name, fallback_color):
+            import os
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{char_name.lower()}_menu{ext}"
+                if os.path.exists(path):
+                    # 1. Jadikan Sprite terlebih dahulu
+                    sprite = arcade.Sprite(path)
+                    
+                    # 2. Kita tidak perlu memaksakan width/height di sini. 
+                    # Cukup sesuaikan scale sprite-nya saja.
+                    # Asumsikan tinggi ideal untuk kotak menu adalah sekitar 120 pixel
+                    target_height = 120
+                    
+                    # Ambil tinggi sprite yang sebenarnya
+                    actual_height = sprite.height 
+                    
+                    # Hitung scale yang diperlukan
+                    if actual_height > 0:
+                        sprite.scale = target_height / actual_height
+                    
+                    # 3. Masukkan Sprite tersebut ke dalam UI
+                    return arcade.gui.UISpriteWidget(sprite=sprite)
+                    
+            # Jika gambar tidak ada, gunakan kotak warna sebagai cadangan
+            return arcade.gui.UISpace(width=120, height=120, color=fallback_color)
+
+        # ========================================
         # PANEL KIRI: PEMAIN
         # ========================================
         left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
@@ -663,12 +692,12 @@ class CharacterSelectionView(arcade.View):
         
         # Area Gambar Portrait & Info Detail Pemain
         if self.last_player_char:
-            # Tinggi kotak diperkecil agar teks muat
-            left_panel.add(arcade.gui.UISpace(width=150, height=100, color=arcade.color.DARK_BLUE))
+            # FIX: Tampilkan gambar _menu di sini
+            left_panel.add(get_portrait_widget(self.last_player_char, arcade.color.DARK_BLUE))
+            
             char_display = f"{self.element_map[self.last_player_char]} {self.last_player_char}"
             left_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
             
-            # --- TEKS INFORMASI KARAKTER (BARU) ---
             info = self.char_info[self.last_player_char]
             info_text = f"🛡️ {info['role']}\n📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
             left_panel.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=300))
@@ -678,10 +707,9 @@ class CharacterSelectionView(arcade.View):
             undo_p_btn.on_click = self.on_undo_player
             left_panel.add(undo_p_btn)
         else:
-            left_panel.add(arcade.gui.UISpace(width=150, height=100, color=arcade.color.DARK_GRAY))
+            left_panel.add(arcade.gui.UISpace(width=120, height=120, color=arcade.color.DARK_GRAY))
             left_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
 
-        # Tampilan Sinergi Pemain
         left_panel.add(arcade.gui.UILabel(text="", height=10))
         syn_name_p, syn_color_p = self.get_synergy(self.player_party)
         left_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
@@ -689,7 +717,7 @@ class CharacterSelectionView(arcade.View):
 
 
         # ========================================
-        # PANEL TENGAH: KONTROL (UPDATE INFO ELEMEN)
+        # PANEL TENGAH: KONTROL 
         # ========================================
         center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
         center_panel.add(arcade.gui.UILabel(text="VS", font_size=36, bold=True, text_color=arcade.color.CRIMSON))
@@ -698,14 +726,12 @@ class CharacterSelectionView(arcade.View):
         rand_btn.on_click = self.on_random
         center_panel.add(rand_btn)
 
-        # --- INFO KELEMAHAN ELEMEN ---
         element_info = arcade.gui.UIBoxLayout(vertical=True, space_between=2)
         element_info.add(arcade.gui.UILabel(text="Rantai Elemen:", font_size=12, text_color=arcade.color.WHITE))
         element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun", font_size=12, bold=True))
         element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air", font_size=12, text_color=arcade.color.LIGHT_GREEN, bold=True))
         element_info.add(arcade.gui.UILabel(text="🔵 Air > 🔴 Api", font_size=12, text_color=arcade.color.LIGHT_BLUE, bold=True))
         center_panel.add(element_info)
-        # ----------------------------
 
         if len(self.player_party) == self.party_size and len(self.enemy_party) == self.party_size:
             ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=150)
@@ -745,11 +771,12 @@ class CharacterSelectionView(arcade.View):
         
         # Area Gambar Portrait & Info Detail Musuh
         if self.last_enemy_char:
-            right_panel.add(arcade.gui.UISpace(width=150, height=100, color=arcade.color.DARK_RED))
+            # FIX: Tampilkan gambar _menu di sini
+            right_panel.add(get_portrait_widget(self.last_enemy_char, arcade.color.DARK_RED))
+            
             char_display = f"{self.element_map[self.last_enemy_char]} {self.last_enemy_char}"
             right_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
             
-            # --- TEKS INFORMASI KARAKTER (BARU) ---
             info = self.char_info[self.last_enemy_char]
             info_text = f"🛡️ {info['role']}\n📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
             right_panel.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=300))
@@ -759,10 +786,9 @@ class CharacterSelectionView(arcade.View):
             undo_e_btn.on_click = self.on_undo_enemy
             right_panel.add(undo_e_btn)
         else:
-            right_panel.add(arcade.gui.UISpace(width=150, height=100, color=arcade.color.DARK_GRAY))
+            right_panel.add(arcade.gui.UISpace(width=120, height=120, color=arcade.color.DARK_GRAY))
             right_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
 
-        # Tampilan Sinergi Musuh
         right_panel.add(arcade.gui.UILabel(text="", height=10))
         syn_name_e, syn_color_e = self.get_synergy(self.enemy_party)
         right_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
@@ -1438,19 +1464,62 @@ class BattleView(arcade.View):
                 
             if not hasattr(inner_enemy, 'level'):
                 inner_enemy.level = max(1, self.endless_floor // 2) if self.endless_floor > 0 else 1
+        
+        # Muat gambar karakter untuk pertama kalinya
+        self.refresh_sprites()
 
-    # --- FUNGSI BARU: MEMUAT SPRITE GAMBAR ---
-    def _load_character_sprite(self, char_name, is_player):
-        """Memuat gambar PNG jika ada, jika tidak pakai kotak warna default"""
-        file_path = f"assets/{char_name.lower()}.png"
-        if os.path.exists(file_path):
-            # Memuat gambar asli (Anda mungkin perlu mengatur 'scale' jika gambarnya terlalu besar)
-            sprite = arcade.Sprite(file_path, scale=1.0)
+    def refresh_sprites(self):
+        """Memuat ulang gambar karakter yang sedang aktif di arena."""
+        if not hasattr(self, 'battler_sprites'):
+            self.battler_sprites = arcade.SpriteList()
+            
+        self.battler_sprites.clear()
+        import os
+
+        def get_base_name(char):
+            full_name = char.name 
+            return full_name.split()[0].lower() 
+
+        def find_image(name):
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{name}{ext}"
+                if os.path.exists(path):
+                    return path
+            return None
+
+        # 1. SETUP GAMBAR PEMAIN (KIRI)
+        p1_name = get_base_name(self.p1_active)
+        p1_path = find_image(p1_name)
+        
+        if p1_path:
+            self.p1_sprite = arcade.Sprite(p1_path)
+            # FIX UKURAN: Hitung scale agar tinggi gambar menjadi 280 pixel
+            self.p1_base_scale = 280 / self.p1_sprite.texture.height
+            self.p1_sprite.scale = self.p1_base_scale
         else:
-            # Fallback jika gambar belum ada
-            color = arcade.color.CRIMSON if is_player else arcade.color.ROYAL_BLUE
-            sprite = arcade.SpriteSolidColor(150, 220, color=color)
-        return sprite
+            self.p1_sprite = arcade.SpriteSolidColor(width=120, height=180, color=arcade.color.CYAN)
+            self.p1_base_scale = 1.0 # Cadangan jika tidak ada gambar
+            
+        self.p1_sprite.center_x = self.p1_base_x
+        self.p1_sprite.center_y = self.base_y + 10  
+        self.battler_sprites.append(self.p1_sprite)
+
+        # 2. SETUP GAMBAR MUSUH (KANAN)
+        p2_name = get_base_name(self.p2_active)
+        p2_path = find_image(p2_name)
+        
+        if p2_path:
+            self.p2_sprite = arcade.Sprite(p2_path)
+            self.p2_base_scale = 280 / self.p2_sprite.texture.height
+            self.p2_sprite.scale = self.p2_base_scale
+            self.p2_sprite.texture = self.p2_sprite.texture.flip_left_right()
+        else:
+            self.p2_sprite = arcade.SpriteSolidColor(width=120, height=180, color=arcade.color.RED)
+            self.p2_base_scale = 1.0
+            
+        self.p2_sprite.center_x = self.p2_base_x
+        self.p2_sprite.center_y = self.base_y + 10
+        self.battler_sprites.append(self.p2_sprite)
 
     def build_ui(self):
         self.manager.clear()
@@ -1545,22 +1614,15 @@ class BattleView(arcade.View):
         self.p2_base_x = sw * 0.65
         self.base_y = sh * 0.50
         
-        # --- UPDATE SPRITE KETIKA SWAP / START ---
-        self.character_sprites.clear()
-        self.p1_sprite = self._load_character_sprite(self.p1_active.name, is_player=True)
-        self.p2_sprite = self._load_character_sprite(self.p2_active.name, is_player=False)
-        self.character_sprites.append(self.p1_sprite)
-        self.character_sprites.append(self.p2_sprite)
+        # --- FIX: HAPUS PEMUATAN GANDA, CUKUP PANGGIL REFRESH SPRITE ---
+        self.refresh_sprites()
 
-        self.p1_sprite.center_x = self.p1_base_x
-        self.p1_sprite.center_y = self.base_y
-        self.p2_sprite.center_x = self.p2_base_x
-        self.p2_sprite.center_y = self.base_y
-
-        self.p1_hp_bar = StatusBar(self.p1_active, x=self.p1_base_x - 125, y=self.base_y + 140, width=250, height=20, is_mana=False)
-        self.p1_mana_bar = StatusBar(self.p1_active, x=self.p1_base_x - 100, y=self.base_y + 110, width=200, height=15, is_mana=True)
-        self.p2_hp_bar = StatusBar(self.p2_active, x=self.p2_base_x - 125, y=self.base_y + 140, width=250, height=20, is_mana=False)
-        self.p2_mana_bar = StatusBar(self.p2_active, x=self.p2_base_x - 100, y=self.base_y + 110, width=200, height=15, is_mana=True)
+        # --- FIX: NAIKKAN POSISI BAR AGAR TIDAK MENUTUPI KEPALA ---
+        self.p1_hp_bar = StatusBar(self.p1_active, x=self.p1_base_x - 125, y=self.base_y + 190, width=250, height=20, is_mana=False)
+        self.p1_mana_bar = StatusBar(self.p1_active, x=self.p1_base_x - 100, y=self.base_y + 160, width=200, height=15, is_mana=True)
+        
+        self.p2_hp_bar = StatusBar(self.p2_active, x=self.p2_base_x - 125, y=self.base_y + 190, width=250, height=20, is_mana=False)
+        self.p2_mana_bar = StatusBar(self.p2_active, x=self.p2_base_x - 100, y=self.base_y + 160, width=200, height=15, is_mana=True)
 
     def on_resize(self, width: int, height: int):
         super().on_resize(width, height)
@@ -1585,6 +1647,7 @@ class BattleView(arcade.View):
             self.spawn_floating_text("RESIST!", base_x, base_y + 40, arcade.color.GRAY)
 
     def handle_death(self) -> bool:
+        self.refresh_sprites()
         if self.p2_active.current_hp <= 0:
             alive_enemies = [i for i, c in enumerate(self.enemy_party) if c.current_hp > 0]
             if not alive_enemies:
@@ -1748,9 +1811,13 @@ class BattleView(arcade.View):
 
         # --- SISTEM ANIMASI SPRITE ---
         # 1. Idle Breathing (Bernapas / Membesar Mengecil)
-        idle_scale = 1.0 + math.sin(self.time_elapsed * 3) * 0.02
-        self.p1_sprite.scale = idle_scale
-        self.p2_sprite.scale = idle_scale
+        # FIX: Tambahkan efek bernapas ke ukuran DASAR, bukan ke 1.0
+        breath_effect = math.sin(self.time_elapsed * 3) * 0.02
+        
+        if hasattr(self, 'p1_base_scale'):
+            self.p1_sprite.scale = self.p1_base_scale + (self.p1_base_scale * breath_effect)
+        if hasattr(self, 'p2_base_scale'):
+            self.p2_sprite.scale = self.p2_base_scale + (self.p2_base_scale * breath_effect)
         
         base_x1, base_x2 = self.p1_base_x, self.p2_base_x
         
@@ -1872,7 +1939,16 @@ class BattleView(arcade.View):
         # MENGGAMBAR BACKGROUND ARENA
         if self.bg_sprite:
             self.bg_sprite_list.draw()
-        self.character_sprites.draw()
+            
+        # Gambar karakter petarung
+        if hasattr(self, 'battler_sprites'):
+            # FIX ANIMASI: Sinkronkan posisi gambar dengan koordinat animasi
+            if hasattr(self, 'p1_sprite'):
+                self.p1_sprite.center_x = self.p1_base_x
+            if hasattr(self, 'p2_sprite'):
+                self.p2_sprite.center_x = self.p2_base_x
+                
+            self.battler_sprites.draw()
         
         # ==========================================
         # FIX: MENGGALI KE KARAKTER INTI UNTUK MEMBACA LEVEL ASLI
@@ -1886,8 +1962,9 @@ class BattleView(arcade.View):
         p1_lvl = get_real_level(self.p1_active)
         p2_lvl = get_real_level(self.p2_active)
         
-        arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
-        arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        # NAIKKAN POSISI Y MENJADI + 220
+        arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 220, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 220, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
         
         # INFO LANTAI ENDLESS (Muncul di atas tengah layar)
         if self.endless_floor > 0:
@@ -2073,11 +2150,21 @@ class EndlessCharacterSelectionView(arcade.View):
             desc_text = f"🌟 Pasif:\n{info['passive']}\n\n🔥 Ultimate:\n{info['ulti']}"
             right_panel.add(arcade.gui.UILabel(text=desc_text, font_size=12, text_color=arcade.color.WHITE, multiline=True, width=300))
             
-            # FIX ARCADE 3.0: Penulisan args SpriteSolidColor & SpriteList
-            import os
-            file_path = f"assets/{self.last_player_char.lower()}.png"
-            if os.path.exists(file_path):
-                self.preview_sprite = arcade.Sprite(file_path, scale=2.0) 
+            # ==========================================
+            # FIX: CARI GAMBAR KHUSUS MENU (akhiran _menu)
+            # ==========================================
+            def find_menu_image(name):
+                for ext in ['.png', '.jpg', '.jpeg']:
+                    path = f"assets/{name.lower()}_menu{ext}"
+                    if os.path.exists(path):
+                        return path
+                return None
+
+            menu_path = find_menu_image(self.last_player_char)
+            
+            if menu_path:
+                # Menampilkan potret/gambar khusus menu
+                self.preview_sprite = arcade.Sprite(menu_path, scale=0.8) # Sesuaikan scale menu jika perlu
             else:
                 self.preview_sprite = arcade.SpriteSolidColor(width=250, height=350, color=arcade.color.CRIMSON)
                 

@@ -1,31 +1,31 @@
 {
     "characters": {
         "Emperor": {
-            "level": 8,
-            "exp": 75
+            "level": 9,
+            "exp": 205
         },
         "Mage": {
-            "level": 5,
-            "exp": 185
+            "level": 6,
+            "exp": 75
         },
         "Gladiator": {
             "level": 2,
-            "exp": 80
+            "exp": 160
         },
         "Assassin": {
             "level": 2,
-            "exp": 0
+            "exp": 160
         },
         "Knight": {
-            "level": 2,
-            "exp": 0
+            "level": 3,
+            "exp": 110
         },
         "Valkyrie": {
-            "level": 2,
-            "exp": 80
+            "level": 3,
+            "exp": 110
         }
     },
-    "gold": 11300,
+    "gold": 13150,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -106,6 +106,7 @@
         "Pedang Kayu",
         "Pedang Kayu",
         "Mahkota Raja Iblis",
-        "Zirah Kain"
+        "Zirah Kain",
+        "Zirah Baja"
     ]
 }
