@@ -32,3 +32,40 @@ class GachaSystem:
         pulled_item_name = random.choice(possible_items)
         
         return pulled_item_name, target_rarity
+    
+    # ---> TAMBAHKAN FUNGSI INI DI PALING BAWAH KELAS GachaSystem <---
+    @staticmethod
+    def get_enemy_equipment(difficulty: str, floor: int = 0):
+        import random
+        allowed_rarities = ["Common"]
+        
+        # Aturan Mode Standar
+        if difficulty in ["EASY", "Mudah"]:
+            allowed_rarities = ["Common"]
+        elif difficulty in ["NORMAL", "Normal"]:
+            allowed_rarities = ["Common", "Rare"]
+        elif difficulty in ["HARD", "Sulit"]:
+            allowed_rarities = ["Rare", "Legendary", "Mythic"]
+            
+        # Aturan Mode Endless (Menyiksa secara perlahan)
+        elif difficulty == "Endless":
+            if floor <= 10:
+                allowed_rarities = ["Common"]
+            elif floor <= 15:
+                allowed_rarities = ["Common", "Rare"]
+            elif floor <= 30:
+                allowed_rarities = ["Rare", "Legendary"]
+            else:
+                allowed_rarities = ["Legendary", "Mythic"]
+                
+        # Saring item yang sesuai kasta
+        possible_items = [
+            name for name, data in GachaSystem.ITEM_POOL.items() 
+            if data.get("rarity", "Common") in allowed_rarities
+        ]
+        
+        # Keamanan cadangan jika list kosong
+        if not possible_items: 
+            return random.choice(list(GachaSystem.ITEM_POOL.keys()))
+            
+        return random.choice(possible_items)

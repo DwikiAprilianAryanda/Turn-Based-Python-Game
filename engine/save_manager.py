@@ -121,3 +121,24 @@ class SaveManager:
         SaveManager._save(data)
         
         return char_data["level"], leveled_up
+    
+    # ---> TAMBAHKAN 3 FUNGSI INI DI PALING BAWAH KELAS SaveManager <---
+    @staticmethod
+    def save_endless_state(floor: int, party_names: list):
+        """Menyimpan lantai dan tim pemain saat memutuskan keluar sementara."""
+        data = SaveManager._load()
+        data["endless_state"] = {"floor": floor, "party": party_names}
+        SaveManager._save(data)
+
+    @staticmethod
+    def get_endless_state():
+        """Mengecek apakah ada save data endless yang belum tamat."""
+        return SaveManager._load().get("endless_state", None)
+
+    @staticmethod
+    def clear_endless_state():
+        """Menghapus save data endless jika pemain mati atau mengambil Gold."""
+        data = SaveManager._load()
+        if "endless_state" in data:
+            del data["endless_state"]
+            SaveManager._save(data)

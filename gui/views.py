@@ -14,7 +14,7 @@ from engine.save_manager import SaveManager, DIFFICULTY_SETTINGS
 from engine.gacha_system import GachaSystem
 
 # ==========================================
-# 1. LAYAR PEMILIHAN MODE (STANDARD VS ENDLESS)
+# 1. LAYAR PEMILIHAN MODE (UPDATE: FITUR RESUME)
 # ==========================================
 class ModeSelectionView(arcade.View):
     def __init__(self):
@@ -25,16 +25,24 @@ class ModeSelectionView(arcade.View):
 
     def build_ui(self):
         self.manager.clear()
+        from engine.save_manager import SaveManager
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
         
         title = arcade.gui.UILabel(text="PILIH JALUR PERTANDINGAN", font_size=32, bold=True, text_color=arcade.color.GOLD)
         v_box.add(title)
-        v_box.add(arcade.gui.UILabel(text="", height=20))
+        v_box.add(arcade.gui.UILabel(text="", height=10))
+        
+        # Cek apakah ada progress Endless yang tersimpan
+        endless_state = SaveManager.get_endless_state()
+        if endless_state:
+            btn_resume = arcade.gui.UIFlatButton(text=f"▶️ Lanjutkan Endless (Lantai {endless_state['floor']})", width=350, height=50)
+            btn_resume.on_click = self.on_resume_click
+            v_box.add(btn_resume)
         
         btn_standard = arcade.gui.UIFlatButton(text="⚔️ Standard Mode (1v1, 2v2, 3v3)", width=350, height=50)
         btn_standard.on_click = self.on_standard_click
         
-        btn_endless = arcade.gui.UIFlatButton(text="♾️ Endless Tower (Wajib 3v3)", width=350, height=50)
+        btn_endless = arcade.gui.UIFlatButton(text="♾️ Endless Tower (Mulai Baru)", width=350, height=50)
         btn_endless.on_click = self.on_endless_click
         
         btn_back = arcade.gui.UIFlatButton(text="Kembali", width=350, height=50)
@@ -48,18 +56,65 @@ class ModeSelectionView(arcade.View):
         anchor.add(child=v_box, anchor_x="center", anchor_y="center")
         self.manager.add(anchor)
 
+    def on_resume_click(self, event):
+        self.manager.disable()
+        from engine.save_manager import SaveManager
+        from engine.factory import CharacterFactory
+        from models.equipment import Equipment
+        from engine.gacha_system import GachaSystem
+        import random
+        
+        state = SaveManager.get_endless_state()
+        start_floor = state["floor"]
+        party_names = state["party"]
+
+        # Bangun ulang tim pemain dengan HP Penuh dan Equipment Acak (Bonus Resume)
+        player_party = []
+        for name in party_names:
+            char = CharacterFactory.create_character(name)
+            eq_name = random.choice(list(GachaSystem.ITEM_POOL.keys()))
+            eq_data = GachaSystem.ITEM_POOL[eq_name]
+            char = Equipment(char, eq_name, eq_data["bonus_atk"], eq_data["bonus_def"])
+            player_party.append(char)
+
+        # Bangun Musuh Sesuai Lantai
+        available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
+        enemy_party = []
+        enemy_level = max(1, start_floor // 2)
+        stat_mult = 1.0 + ((start_floor - 1) * 0.1) 
+        
+        for _ in range(3):
+            char_type = random.choice(available_chars)
+            char = CharacterFactory.create_character(char_type, f"Lantai {start_floor} {char_type}")
+            if hasattr(char, 'apply_scaling'):
+                char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
+            char.level = enemy_level 
+            
+            # KODE BARU (Scaling cerdas)
+            random_eq = GachaSystem.get_enemy_equipment("Endless", start_floor)
+            eq_data = GachaSystem.ITEM_POOL[random_eq]
+            char = Equipment(char, random_eq, eq_data["bonus_atk"], eq_data["bonus_def"])
+            char.level = enemy_level
+            enemy_party.append(char)
+
+        from gui.views import BattleView
+        self.window.show_view(BattleView(player_party, enemy_party, "Endless", ["Player"]*3, endless_floor=start_floor))
+
     def on_standard_click(self, event):
         self.manager.disable()
         from gui.views import DifficultySelectionView 
         self.window.show_view(DifficultySelectionView(party_size=3)) 
 
     def on_endless_click(self, event):
+        from engine.save_manager import SaveManager
+        SaveManager.clear_endless_state() # Hapus save lama jika mulai baru
         self.manager.disable()
         from gui.views import EndlessCharacterSelectionView
         self.window.show_view(EndlessCharacterSelectionView())
 
     def on_back_click(self, event):
         self.manager.disable()
+        from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
     def on_show_view(self):
@@ -833,8 +888,8 @@ class EquipmentSelectionView(arcade.View):
             char.apply_scaling(level=enemy_level, stat_multiplier=diff_settings["stat_mult"])
             
             import random
-            random_eq = random.choice(all_items)
-            eq_data = GachaSystem.ITEM_POOL[random_eq]
+            # Akan otomatis menyesuaikan dengan Easy / Normal / Hard!
+            random_eq = GachaSystem.get_enemy_equipment(self.difficulty, 0)
             
             # LAPISAN 1: Musuh pakai Equipment acak
             char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
@@ -1107,6 +1162,17 @@ class BattleView(arcade.View):
         self.p1_active.on_turn_start()
         if self.p1_active.passive_logs:
             self.p1_log += f"\n{self.p1_active.passive_logs}"
+
+        # --- TAMBAHKAN KODE INI DI DALAM __init__ BATTLEVIEW ---
+        from engine.save_manager import SaveManager
+        for char in self.player_party:
+            # Ambil nama asli jika memakai equipment
+            base_name = char.character.name if hasattr(char, 'character') else char.name
+            char.level = SaveManager.get_character_data(base_name).get("level", 1)
+            
+        for char in self.enemy_party:
+            if not hasattr(char, 'level'):
+                char.level = max(1, self.endless_floor // 2) if self.endless_floor > 0 else 1
 
     # --- FUNGSI BARU: MEMUAT SPRITE GAMBAR ---
     def _load_character_sprite(self, char_name, is_player):
@@ -1540,9 +1606,16 @@ class BattleView(arcade.View):
         self.clear()
         self.character_sprites.draw()
         
-        # Nama Karakter
-        arcade.Text(self.p1_active.name, x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
-        arcade.Text(self.p2_active.name, x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        # Nama Karakter DITAMBAH LEVEL
+        p1_lvl = getattr(self.p1_active, 'level', 1)
+        p2_lvl = getattr(self.p2_active, 'level', 1)
+        
+        arcade.Text(f"{self.p1_active.name} (Lv.{p1_lvl})", x=self.p1_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        arcade.Text(f"{self.p2_active.name} (Lv.{p2_lvl})", x=self.p2_base_x, y=self.base_y + 180, color=arcade.color.WHITE, font_size=16, bold=True, anchor_x="center").draw()
+        
+        # INFO LANTAI ENDLESS (Muncul di atas tengah layar)
+        if self.endless_floor > 0:
+            arcade.Text(f"ENDLESS TOWER - LANTAI {self.endless_floor}", x=self.window.width/2, y=self.window.height - 40, color=arcade.color.GOLD, font_size=22, bold=True, anchor_x="center").draw()
         
         self.p1_hp_bar.draw()
         self.p1_mana_bar.draw()
@@ -1807,7 +1880,7 @@ class HistoryView(arcade.View):
         self.manager.draw()
 
 # ==========================================
-# LAYAR REWARD ENDLESS TOWER
+# 2. LAYAR REWARD ENDLESS (UPDATE: SCALING & SAVE)
 # ==========================================
 class EndlessRewardView(arcade.View):
     def __init__(self, surviving_party, cleared_floor, player_types):
@@ -1815,30 +1888,31 @@ class EndlessRewardView(arcade.View):
         self.surviving_party = surviving_party
         self.cleared_floor = cleared_floor
         self.player_types = player_types
-        
-        # Hadiah bertambah seiring tingginya lantai
         self.gold_reward = 100 * self.cleared_floor
-        
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self.build_ui()
 
     def build_ui(self):
         self.manager.clear()
-        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
         v_box.add(arcade.gui.UILabel(text=f"LANTAI {self.cleared_floor} DITAKLUKKAN!", font_size=32, bold=True, text_color=arcade.color.GOLD))
         v_box.add(arcade.gui.UILabel(text=f"Hadiah Sementara: {self.gold_reward} Gold", font_size=18, text_color=arcade.color.YELLOW))
-        v_box.add(arcade.gui.UILabel(text="Hati-hati! Jika Anda kalah di lantai berikutnya, semua hadiah hilang!", font_size=12, text_color=arcade.color.LIGHT_GRAY))
-        v_box.add(arcade.gui.UILabel(text="", height=20))
+        v_box.add(arcade.gui.UILabel(text="Jika Anda kalah di lantai berikutnya, semua hadiah hilang!", font_size=12, text_color=arcade.color.LIGHT_GRAY))
+        v_box.add(arcade.gui.UILabel(text="", height=10))
         
-        btn_next = arcade.gui.UIFlatButton(text=f"⚔️ Lanjut Lantai {self.cleared_floor + 1}", width=250)
+        btn_next = arcade.gui.UIFlatButton(text=f"⚔️ Lanjut Lantai {self.cleared_floor + 1}", width=300, height=45)
         btn_next.on_click = self.on_next_floor
         
-        btn_home = arcade.gui.UIFlatButton(text="💰 Ambil Gold & Pulang", width=250)
+        btn_save = arcade.gui.UIFlatButton(text="💾 Simpan Progress & Keluar", width=300, height=45)
+        btn_save.on_click = self.on_save_quit
+        
+        btn_home = arcade.gui.UIFlatButton(text="💰 Ambil Gold & Pulang (Reset)", width=300, height=45)
         btn_home.on_click = self.on_home
         
         v_box.add(btn_next)
+        v_box.add(btn_save)
         v_box.add(btn_home)
         
         anchor = arcade.gui.UIAnchorLayout()
@@ -1850,40 +1924,55 @@ class EndlessRewardView(arcade.View):
         from engine.factory import CharacterFactory
         from models.equipment import Equipment
         from engine.gacha_system import GachaSystem
-        from models.synergy import SynergyBuff
 
-        # BANGUN MUSUH YANG LEBIH KUAT
         new_floor = self.cleared_floor + 1
         available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         enemy_party = []
         
-        # Scaling brutal (Level musuh naik tajam tiap lantai)
+        # SCALING SMOOTH: Level dan Status naik pelan-pelan tiap lantai
         enemy_level = max(1, new_floor // 2)
-        stat_mult = 1.0 + (new_floor * 0.15) 
+        stat_mult = 1.0 + ((new_floor - 1) * 0.1) # Lantai 1=1.0x, Lantai 5=1.4x
         
         for i in range(3):
             char_type = random.choice(available_chars)
             char = CharacterFactory.create_character(char_type, f"Lantai {new_floor} {char_type}")
-            char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
+            if hasattr(char, 'apply_scaling'):
+                char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
+            char.level = enemy_level
             
-            # Musuh selalu pakai equipment Legendary/Mythic jika lantai tinggi
-            random_eq = random.choice(list(GachaSystem.ITEM_POOL.keys()))
+            # KODE BARU (Scaling cerdas)
+            random_eq = GachaSystem.get_enemy_equipment("Endless", new_floor)
             eq_data = GachaSystem.ITEM_POOL[random_eq]
             char = Equipment(char, random_eq, eq_data["bonus_atk"], eq_data["bonus_def"])
-            
+            char.level = enemy_level 
             enemy_party.append(char)
 
-        # Berangkat ke arena lagi dengan TIM YANG SAMA (HP tidak di-reset)
         self.manager.disable()
+        from gui.views import BattleView
         self.window.show_view(BattleView(self.surviving_party, enemy_party, "Endless", self.player_types, endless_floor=new_floor))
 
+    def on_save_quit(self, event):
+        from engine.save_manager import SaveManager
+        # Ekstrak nama karakter asli dari party (mengabaikan decorator)
+        party_names = []
+        for char in self.surviving_party:
+            if char.current_hp > 0:
+                base_name = char.character.name if hasattr(char, 'character') else char.name
+                party_names.append(base_name)
+                
+        SaveManager.save_endless_state(self.cleared_floor + 1, party_names)
+        
+        self.manager.disable()
+        from gui.views import MainMenuView
+        self.window.show_view(MainMenuView())
+
     def on_home(self, event):
-        # Simpan uang ke Save Data
         from engine.save_manager import SaveManager
         SaveManager.add_gold(self.gold_reward)
+        SaveManager.clear_endless_state() # Reset lantai ke 1
         
-        from gui.views import MainMenuView
         self.manager.disable()
+        from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
     def on_show_view(self):
