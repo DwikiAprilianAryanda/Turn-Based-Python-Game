@@ -79,6 +79,124 @@ class BGMManager:
             cls.current_vol = max(cls.target_vol, cls.current_vol - (cls.fade_speed * 3 * delta_time))
             cls.player.volume = cls.current_vol
 
+class SettingsView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.build_ui()
+
+        import os
+        click_path = "assets/sfx/click.mp3"
+        self.sfx_click = arcade.load_sound(click_path) if os.path.exists(click_path) else None
+
+    def build_ui(self):
+        self.manager.clear()
+
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        panel_width = 500
+        panel_height = 400
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
+        panel_wrapper.add(child=panel_bg)
+
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        v_box.add(arcade.gui.UILabel(text="⚙️ PENGATURAN SUARA", font_size=26, bold=True, text_color=arcade.color.GOLD))
+        v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        # Tampilkan volume BGM saat ini
+        current_vol = int(BGMManager.target_vol * 100)
+        v_box.add(arcade.gui.UILabel(
+            text=f"🎵 Volume BGM: {current_vol}%",
+            font_size=18, text_color=arcade.color.WHITE, bold=True
+        ))
+
+        # Baris tombol +/-
+        vol_row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+
+        vol_btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+
+        mute_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.MAROON, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+
+        btn_down = arcade.gui.UIFlatButton(text="🔉 -10%", width=130, height=50, style=vol_btn_style)
+        btn_up = arcade.gui.UIFlatButton(text="🔊 +10%", width=130, height=50, style=vol_btn_style)
+        btn_mute = arcade.gui.UIFlatButton(text="🔇 MUTE", width=130, height=50, style=mute_style)
+
+        def on_vol_down(event):
+            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.target_vol = max(0.0, round(BGMManager.target_vol - 0.1, 1))
+            self.build_ui()
+
+        def on_vol_up(event):
+            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.target_vol = min(1.0, round(BGMManager.target_vol + 0.1, 1))
+            self.build_ui()
+
+        def on_mute(event):
+            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.target_vol = 0.0 if BGMManager.target_vol > 0 else 1.0
+            self.build_ui()
+
+        btn_down.on_click = on_vol_down
+        btn_up.on_click = on_vol_up
+        btn_mute.on_click = on_mute
+
+        vol_row.add(btn_down)
+        vol_row.add(btn_mute)
+        vol_row.add(btn_up)
+        v_box.add(vol_row)
+
+        # Visual bar volume
+        bar_total = 10
+        filled = int(BGMManager.target_vol * bar_total)
+        bar_str = "█" * filled + "░" * (bar_total - filled)
+        bar_color = arcade.color.LIME_GREEN if filled > 3 else arcade.color.RED
+        v_box.add(arcade.gui.UILabel(text=bar_str, font_size=22, text_color=bar_color, bold=True))
+
+        v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        back_btn = arcade.gui.UIFlatButton(text="❌ Kembali ke Menu", width=300, height=50, style=cancel_style)
+
+        def on_back(event):
+            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            self.manager.disable()
+            self.window.show_view(MainMenuView())
+
+        back_btn.on_click = on_back
+        v_box.add(back_btn)
+
+        panel_wrapper.add(child=v_box, anchor_x="center", anchor_y="center")
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    def on_update(self, delta_time):
+        BGMManager.update(delta_time)
+
+    def on_show_view(self):
+        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
+    def on_draw(self):
+        self.clear()
+        self.manager.draw()
+
 # ==========================================
 # 1. LAYAR PEMILIHAN MODE (UPDATE: FITUR RESUME)
 # ==========================================
@@ -397,6 +515,7 @@ class MainMenuView(arcade.View):
         v_box.add(create_menu_btn("Inventory Equipment", "🎒", self.on_inv_click))
         v_box.add(create_menu_btn("Gacha Terminal", "✨", self.on_gacha_click))
         v_box.add(create_menu_btn("Riwayat Pertandingan", "📜", self.on_hist_click))
+        v_box.add(create_menu_btn("Pengaturan Suara", "⚙️", self.on_settings_click))
         
         v_box.add(arcade.gui.UILabel(text="", height=30)) 
         v_box.add(create_menu_btn("Keluar Permainan", "❌", self.on_quit_click, is_exit=True))
@@ -411,6 +530,11 @@ class MainMenuView(arcade.View):
         self.manager.add(footer_anchor)
 
     # AKSI TOMBOL
+    def on_settings_click(self, event):
+        self.manager.disable()
+        from gui.views import SettingsView
+        self.window.show_view(SettingsView())
+
     def on_start_click(self, event):
         self.manager.disable()
         from gui.views import ModeSelectionView

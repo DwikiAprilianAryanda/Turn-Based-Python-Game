@@ -1,31 +1,31 @@
 {
     "characters": {
         "Emperor": {
-            "level": 10,
-            "exp": 475
+            "level": 11,
+            "exp": 5
         },
         "Mage": {
-            "level": 6,
-            "exp": 535
+            "level": 7,
+            "exp": 85
         },
         "Gladiator": {
             "level": 3,
-            "exp": 40
+            "exp": 120
         },
         "Assassin": {
-            "level": 3,
-            "exp": 200
+            "level": 4,
+            "exp": 50
         },
         "Knight": {
-            "level": 3,
-            "exp": 110
+            "level": 4,
+            "exp": 40
         },
         "Valkyrie": {
             "level": 4,
             "exp": 200
         }
     },
-    "gold": 12050,
+    "gold": 13200,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -144,6 +144,21 @@
         "Tombak Ksatria",
         "Zirah Duri Beracun",
         "Zirah Baja",
-        "Tombak Ksatria"
-    ]
+        "Tombak Ksatria",
+        "Zirah Kain",
+        "Zirah Baja"
+    ],
+    "endless_state": {
+        "floor": 3,
+        "party": [
+            "Emperor",
+            "Mage",
+            "Knight"
+        ],
+        "equipments": [
+            "Tangan Kosong",
+            "Tangan Kosong",
+            "Tangan Kosong"
+        ]
+    }
 }
