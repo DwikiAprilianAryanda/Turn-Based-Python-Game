@@ -597,7 +597,7 @@ class MainMenuView(arcade.View):
         v_box.add(create_menu_btn("Mulai Bermain", "⚔️", self.on_start_click))
         v_box.add(create_menu_btn("Inventory Equipment", "🎒", self.on_inv_click))
         v_box.add(create_menu_btn("Gacha Terminal", "✨", self.on_gacha_click))
-        v_box.add(create_menu_btn("Riwayat Pertandingan", "📜", self.on_hist_click))
+        # v_box.add(create_menu_btn("Riwayat Pertandingan", "📜", self.on_hist_click))
         v_box.add(create_menu_btn("Pengaturan Suara", "⚙️", self.on_settings_click))
         
         v_box.add(arcade.gui.UILabel(text="", height=30)) 
@@ -633,10 +633,10 @@ class MainMenuView(arcade.View):
         from gui.views import GachaView
         self.window.show_view(GachaView())
         
-    def on_hist_click(self, event):
-        self.manager.disable()
-        from gui.views import HistoryView 
-        self.window.show_view(HistoryView())
+    # def on_hist_click(self, event):
+    #     self.manager.disable()
+    #     from gui.views import HistoryView 
+    #     self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
         arcade.exit()
@@ -3783,74 +3783,74 @@ class EndlessCharacterSelectionView(arcade.View):
             self.bg_sprite.width = width
             self.bg_sprite.height = height
 
-# ==========================================
-# 7. LAYAR RIWAYAT PERTANDINGAN
-# ==========================================
-class HistoryView(arcade.View):
-    def __init__(self):
-        super().__init__()
-        self.manager = arcade.gui.UIManager()
-        self.manager.enable()
-        self.bg_sprite_list = arcade.SpriteList()
-        import os
-        bg_path = "assets/bg/history_bg.jpg" # Tinggal ganti nama file sesuai selera
-        if os.path.exists(bg_path):
-            self.bg_sprite = arcade.Sprite(bg_path)
-            self.bg_sprite.center_x = self.window.width / 2
-            self.bg_sprite.center_y = self.window.height / 2
-            self.bg_sprite.width = self.window.width
-            self.bg_sprite.height = self.window.height
-            self.bg_sprite_list.append(self.bg_sprite)
-        else:
-            self.bg_sprite = None
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
+# # ==========================================
+# # 7. LAYAR RIWAYAT PERTANDINGAN
+# # ==========================================
+# class HistoryView(arcade.View):
+#     def __init__(self):
+#         super().__init__()
+#         self.manager = arcade.gui.UIManager()
+#         self.manager.enable()
+#         self.bg_sprite_list = arcade.SpriteList()
+#         import os
+#         bg_path = "assets/bg/history_bg.jpg" # Tinggal ganti nama file sesuai selera
+#         if os.path.exists(bg_path):
+#             self.bg_sprite = arcade.Sprite(bg_path)
+#             self.bg_sprite.center_x = self.window.width / 2
+#             self.bg_sprite.center_y = self.window.height / 2
+#             self.bg_sprite.width = self.window.width
+#             self.bg_sprite.height = self.window.height
+#             self.bg_sprite_list.append(self.bg_sprite)
+#         else:
+#             self.bg_sprite = None
+#         self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        title_label = arcade.gui.UILabel(
-            text="📜 RIWAYAT PERTANDINGAN", text_color=arcade.color.GOLD, font_size=24, bold=True
-        )
-        self.v_box.add(title_label)
+#         title_label = arcade.gui.UILabel(
+#             text="📜 RIWAYAT PERTANDINGAN", text_color=arcade.color.GOLD, font_size=24, bold=True
+#         )
+#         self.v_box.add(title_label)
 
-        history_data = HistoryManager.get_history()
+#         history_data = HistoryManager.get_history()
 
-        if not history_data:
-            empty_label = arcade.gui.UILabel(text="Belum ada riwayat pertandingan.", text_color=arcade.color.WHITE)
-            self.v_box.add(empty_label)
-        else:
-            recent_matches = list(reversed(history_data))[:5]
-            for match in recent_matches:
-                match_text = f"[{match['waktu']}] 🏆 {match['pemenang']} (Sisa HP: {match['sisa_hp_pemenang']}) mengalahkan {match['kalah']}"
-                row_label = arcade.gui.UILabel(text=match_text, text_color=arcade.color.LIGHT_GRAY, font_size=12)
-                self.v_box.add(row_label)
+#         if not history_data:
+#             empty_label = arcade.gui.UILabel(text="Belum ada riwayat pertandingan.", text_color=arcade.color.WHITE)
+#             self.v_box.add(empty_label)
+#         else:
+#             recent_matches = list(reversed(history_data))[:5]
+#             for match in recent_matches:
+#                 match_text = f"[{match['waktu']}] 🏆 {match['pemenang']} (Sisa HP: {match['sisa_hp_pemenang']}) mengalahkan {match['kalah']}"
+#                 row_label = arcade.gui.UILabel(text=match_text, text_color=arcade.color.LIGHT_GRAY, font_size=12)
+#                 self.v_box.add(row_label)
 
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=200)
-        back_btn.on_click = self.on_back_click
-        self.v_box.add(arcade.gui.UILabel(text="", height=20)) 
-        self.v_box.add(back_btn)
+#         back_btn = arcade.gui.UIFlatButton(text="Kembali", width=200)
+#         back_btn.on_click = self.on_back_click
+#         self.v_box.add(arcade.gui.UILabel(text="", height=20)) 
+#         self.v_box.add(back_btn)
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
+#         anchor_layout = arcade.gui.UIAnchorLayout()
+#         anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
+#         self.manager.add(anchor_layout)
 
-    def on_back_click(self, event):
-        self.manager.disable()
-        self.window.show_view(MainMenuView())
+#     def on_back_click(self, event):
+#         self.manager.disable()
+#         self.window.show_view(MainMenuView())
 
-    def on_show_view(self):
-        arcade.set_background_color(arcade.color.EIGHTEEN_PERCENT_GREY if hasattr(arcade.color, 'EIGHTEEN_PERCENT_GREY') else arcade.color.DARK_GRAY)
+#     def on_show_view(self):
+#         arcade.set_background_color(arcade.color.EIGHTEEN_PERCENT_GREY if hasattr(arcade.color, 'EIGHTEEN_PERCENT_GREY') else arcade.color.DARK_GRAY)
 
-    def on_draw(self):
-        self.clear()
-        if self.bg_sprite:
-            self.bg_sprite_list.draw()
-        self.manager.draw()
+#     def on_draw(self):
+#         self.clear()
+#         if self.bg_sprite:
+#             self.bg_sprite_list.draw()
+#         self.manager.draw()
 
-    def on_resize(self, width: int, height: int):
-        super().on_resize(width, height)
-        if hasattr(self, 'bg_sprite') and self.bg_sprite:
-            self.bg_sprite.center_x = width / 2
-            self.bg_sprite.center_y = height / 2
-            self.bg_sprite.width = width
-            self.bg_sprite.height = height
+#     def on_resize(self, width: int, height: int):
+#         super().on_resize(width, height)
+#         if hasattr(self, 'bg_sprite') and self.bg_sprite:
+#             self.bg_sprite.center_x = width / 2
+#             self.bg_sprite.center_y = height / 2
+#             self.bg_sprite.width = width
+#             self.bg_sprite.height = height
 
 # ==========================================
 # 2. LAYAR REWARD ENDLESS (UPDATE: SCALING & SAVE FIX)
