@@ -48,34 +48,85 @@ class ModeSelectionView(arcade.View):
     def build_ui(self):
         self.manager.clear()
         from engine.save_manager import SaveManager
-        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
         
-        title = arcade.gui.UILabel(text="PILIH JALUR PERTANDINGAN", font_size=32, bold=True, text_color=arcade.color.GOLD)
-        v_box.add(title)
-        v_box.add(arcade.gui.UILabel(text="", height=10))
+        # ==========================================
+        # 1. JURUS DIMMER GLOBAL
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 180))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        # ==========================================
+        # 2. PANEL KACA GELAP (WADAH MENU)
+        # ==========================================
+        panel_width = 550
+        panel_height = 420
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
+        panel_wrapper.add(child=panel_bg)
+
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
+        # Header
+        v_box.add(arcade.gui.UILabel(text="⛩️ JALUR PERTANDINGAN ⛩️", font_size=26, bold=True, text_color=arcade.color.GOLD))
+        v_box.add(arcade.gui.UILabel(text="Pilih mode permainan untuk menguji taktik Anda", font_size=13, text_color=arcade.color.LIGHT_GRAY))
+        v_box.add(arcade.gui.UILabel(text="", height=15))
+        
+        # ==========================================
+        # 3. GAYA TOMBOL DINAMIS
+        # ==========================================
+        resume_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_ORANGE, "border_color": arcade.color.ORANGE, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ORANGE, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ORANGE_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        std_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 2}
+        }
+        
+        endl_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.PURPLE, "border_color": arcade.color.MAGENTA, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_VIOLET, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.INDIGO, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+
         # Cek apakah ada progress Endless yang tersimpan
         endless_state = SaveManager.get_endless_state()
         if endless_state:
-            btn_resume = arcade.gui.UIFlatButton(text=f"▶️ Lanjutkan Endless (Lantai {endless_state['floor']})", width=350, height=50)
+            btn_resume = arcade.gui.UIFlatButton(text=f"▶️ Lanjutkan Endless (Lantai {endless_state['floor']})", width=400, height=50, style=resume_style)
             btn_resume.on_click = self.on_resume_click
             v_box.add(btn_resume)
+            panel_height += 65 # Ekspansi ukuran panel otomatis
         
-        btn_standard = arcade.gui.UIFlatButton(text="⚔️ Standard Mode (1v1, 2v2, 3v3)", width=350, height=50)
+        # FIX: Teks 1v1/2v2 Dihapus!
+        btn_standard = arcade.gui.UIFlatButton(text="⚔️ Standard Mode (Pertarungan 3v3)", width=400, height=50, style=std_style)
         btn_standard.on_click = self.on_standard_click
         
-        btn_endless = arcade.gui.UIFlatButton(text="♾️ Endless Tower (Mulai Baru)", width=350, height=50)
+        btn_endless = arcade.gui.UIFlatButton(text="♾️ Endless Tower (Mulai Perjalanan Baru)", width=400, height=50, style=endl_style)
         btn_endless.on_click = self.on_endless_click
         
-        btn_back = arcade.gui.UIFlatButton(text="Kembali", width=350, height=50)
+        btn_back = arcade.gui.UIFlatButton(text="❌ Kembali ke Menu Utama", width=400, height=45, style=cancel_style)
         btn_back.on_click = self.on_back_click
         
         v_box.add(btn_standard)
         v_box.add(btn_endless)
+        v_box.add(arcade.gui.UILabel(text="", height=10)) # Spacer sebelum tombol kembali
         v_box.add(btn_back)
         
+        panel_wrapper.add(child=v_box, anchor_x="center", anchor_y="center")
+        
         anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
         self.manager.add(anchor)
 
     def on_resume_click(self, event):
@@ -807,7 +858,7 @@ class GachaView(arcade.View):
             self.bg_sprite.height = height
 
 # ==========================================
-# 3. LAYAR PILIH KESULITAN (BARU)
+# 3. LAYAR PILIH KESULITAN (UPDATE: FROSTED GLASS & REFACTORING)
 # ==========================================
 class DifficultySelectionView(arcade.View):
     def __init__(self, party_size):
@@ -816,6 +867,7 @@ class DifficultySelectionView(arcade.View):
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self.bg_sprite_list = arcade.SpriteList()
+        
         import os
         bg_path = "assets/bg/standart_menu_bg.jpg" # Tinggal ganti nama file sesuai selera
         if os.path.exists(bg_path):
@@ -827,51 +879,115 @@ class DifficultySelectionView(arcade.View):
             self.bg_sprite_list.append(self.bg_sprite)
         else:
             self.bg_sprite = None
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
-
-        self.v_box.add(arcade.gui.UILabel(text="PILIH TINGKAT KESULITAN", text_color=arcade.color.GOLD, font_size=28, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP yang didapat!", text_color=arcade.color.LIGHT_GRAY, font_size=16, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-
-        btn_easy = arcade.gui.UIFlatButton(text="🟢 EASY (Musuh Mentok Lv.10 | EXP x1.0)", width=350)
-        btn_med = arcade.gui.UIFlatButton(text="🟡 MEDIUM (Musuh Mentok Lv.30 | EXP x1.5)", width=350)
-        btn_hard = arcade.gui.UIFlatButton(text="🔴 HARD (Musuh Mentok Lv.100 | EXP x2.5)", width=350)
-
-        btn_easy.on_click = self.on_easy
-        btn_med.on_click = self.on_medium
-        btn_hard.on_click = self.on_hard
-
-        self.v_box.add(btn_easy)
-        self.v_box.add(btn_med)
-        self.v_box.add(btn_hard)
-
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=350)
-        back_btn.on_click = self.on_back_click
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-        self.v_box.add(back_btn)
-
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
-
+            
         # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
+        # MUAT SFX KLIK
         # ==========================================
-        import os
         click_path = "assets/sfx/click.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
         else:
             self.sfx_click = None
 
+        # Panggil pembuatan UI yang sudah dipisahkan agar rapi
+        self.build_ui()
+
+    def build_ui(self):
+        self.manager.clear()
+        
+        # ==========================================
+        # 1. JURUS DIMMER GLOBAL
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 190))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        # ==========================================
+        # 2. PANEL KACA GELAP
+        # ==========================================
+        panel_width = 600
+        panel_height = 420
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
+        panel_wrapper.add(child=panel_bg)
+
+        self.v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        
+        # Header
+        self.v_box.add(arcade.gui.UILabel(text="🔥 TINGKAT KESULITAN 🔥", font_size=26, bold=True, text_color=arcade.color.GOLD))
+        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP & Gold yang didapat!", font_size=13, text_color=arcade.color.LIGHT_GRAY))
+        self.v_box.add(arcade.gui.UILabel(text="", height=15))
+        
+        # ==========================================
+        # 3. GAYA TOMBOL BERDASARKAN KESULITAN
+        # ==========================================
+        easy_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        med_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.GOLD, "border_color": arcade.color.DARK_GOLDENROD, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.YELLOW, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GOLDENROD, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        hard_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.MAROON, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": (50, 50, 60, 255), "border_color": arcade.color.GRAY, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": (70, 70, 80, 255), "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": (30, 30, 40, 255), "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+
+        def create_diff_btn(text, style, action_func):
+            btn = arcade.gui.UIFlatButton(text=text, width=480, height=50, style=style)
+            btn.on_click = action_func
+            return btn
+
+        # Eksekusi Pembuatan Tombol (Suara sudah dihandle di on_easy dll)
+        btn_easy = create_diff_btn("🟢 EASY (Musuh Max Lv 10  |  EXP x1.0)", easy_style, self.on_easy)
+        btn_medium = create_diff_btn("🟡 MEDIUM (Musuh Max Lv 30  |  EXP x1.5)", med_style, self.on_medium)
+        btn_hard = create_diff_btn("🔴 HARD (Musuh Max Lv 100  |  EXP x2.5)", hard_style, self.on_hard)
+        
+        # Tombol kembali butuh pembungkus SFX karena di fungsi on_back_click asli belum ada
+        def on_back_wrapper(event):
+            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            self.on_back_click(event)
+            
+        btn_back = create_diff_btn("Kembali ke Pemilihan Mode", cancel_style, on_back_wrapper)
+        
+        self.v_box.add(btn_easy)
+        self.v_box.add(btn_medium)
+        self.v_box.add(btn_hard)
+        self.v_box.add(arcade.gui.UILabel(text="", height=10)) 
+        self.v_box.add(btn_back)
+        
+        panel_wrapper.add(child=self.v_box, anchor_x="center", anchor_y="center")
+        
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    # ==========================================
+    # FUNGSI AKSI & LOGIKA
+    # ==========================================
     def on_easy(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
             arcade.play_sound(self.sfx_click, volume=0.5)
         self.select_diff("EASY")
+
     def on_medium(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
             arcade.play_sound(self.sfx_click, volume=0.5)
         self.select_diff("MEDIUM")
+
     def on_hard(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
             arcade.play_sound(self.sfx_click, volume=0.5)
@@ -879,10 +995,12 @@ class DifficultySelectionView(arcade.View):
 
     def select_diff(self, diff):
         self.manager.disable()
+        from gui.views import CharacterSelectionView # Pastikan import ada atau disesuaikan
         self.window.show_view(CharacterSelectionView(self.party_size, diff))
 
     def on_back_click(self, event):
         self.manager.disable()
+        from gui.views import ModeSelectionView # Pastikan import ada atau disesuaikan
         self.window.show_view(ModeSelectionView())
 
     def on_show_view(self):
