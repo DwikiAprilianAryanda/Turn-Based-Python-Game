@@ -2,15 +2,15 @@
     "characters": {
         "Emperor": {
             "level": 10,
-            "exp": 395
+            "exp": 475
         },
         "Mage": {
             "level": 6,
             "exp": 535
         },
         "Gladiator": {
-            "level": 2,
-            "exp": 160
+            "level": 3,
+            "exp": 40
         },
         "Assassin": {
             "level": 3,
@@ -22,10 +22,10 @@
         },
         "Valkyrie": {
             "level": 4,
-            "exp": 120
+            "exp": 200
         }
     },
-    "gold": 11900,
+    "gold": 12050,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -142,6 +142,8 @@
         "Pedang Kayu",
         "Pedang Kayu",
         "Tombak Ksatria",
-        "Zirah Duri Beracun"
+        "Zirah Duri Beracun",
+        "Zirah Baja",
+        "Tombak Ksatria"
     ]
 }

@@ -13,6 +13,72 @@ from engine.history_manager import HistoryManager
 from engine.save_manager import SaveManager, DIFFICULTY_SETTINGS
 from engine.gacha_system import GachaSystem
 
+class BGMManager:
+    player = None
+    current_track = None
+    target_vol = 1.0
+    current_vol = 1.0
+    fade_speed = 0.5  # Kecepatan transisi volume
+
+    @classmethod
+    def play(cls, track_name):
+        # PASTIKAN FILE AUDIO INI ADA DI FOLDER ANDA
+        tracks = {
+            "MENU": "assets/bgm/menu_bgm.mp3",
+            "SELECT": "assets/bgm/select_bgm.mp3",
+            "BATTLE": "assets/bgm/battle_theme.mp3",
+            "BATTLE_ENDLESS": "assets/bgm/endless_bgm.mp3"
+        }
+        
+        # Jika lagu yang sama sedang diputar, biarkan berlanjut (jangan diulang)
+        if cls.current_track == track_name and cls.player:
+            return 
+            
+        # Hentikan lagu sebelumnya jika ada
+        if cls.player:
+            try:
+                cls.player.pause()
+            except:
+                pass
+            cls.player = None 
+            
+        cls.current_track = track_name
+        cls.target_vol = 1.0
+        cls.current_vol = 1.0
+        
+        path = tracks.get(track_name)
+        if path and os.path.exists(path):
+            sound = arcade.load_sound(path)
+            try:
+                cls.player = sound.play(volume=1.0, loop=True)
+            except TypeError:
+                # Jika 'loop' juga tidak dikenali, gunakan ini:
+                cls.player = sound.play(volume=1.0)
+            
+    @classmethod
+    def mute_for_sfx(cls):
+        """Panggil ini saat animasi gacha dimulai"""
+        cls.target_vol = 0.1  # Jangan 0 mutlak, 0.1 agar masih terdengar samar-samar
+        
+    @classmethod
+    def restore_volume(cls):
+        """Panggil ini saat hadiah gacha sudah muncul"""
+        cls.target_vol = 1.0
+
+    @classmethod
+    def update(cls, delta_time):
+        """Mengatur transisi suara agar mulus (fade in / fade out)"""
+        if not cls.player:
+            return
+            
+        if cls.current_vol < cls.target_vol:
+            cls.current_vol = min(cls.target_vol, cls.current_vol + (cls.fade_speed * delta_time))
+            cls.player.volume = cls.current_vol
+        elif cls.current_vol > cls.target_vol:
+            # Fade out sedikit lebih cepat dari fade in
+            cls.current_vol = max(cls.target_vol, cls.current_vol - (cls.fade_speed * 3 * delta_time))
+            cls.player.volume = cls.current_vol
+
 # ==========================================
 # 1. LAYAR PEMILIHAN MODE (UPDATE: FITUR RESUME)
 # ==========================================
@@ -247,7 +313,7 @@ class ModeSelectionView(arcade.View):
             self.bg_sprite.height = height
 
 # ==========================================
-# 2. LAYAR MENU UTAMA
+# 2. LAYAR MENU UTAMA (UPDATE: AAA STYLE & BGM)
 # ==========================================
 class MainMenuView(arcade.View):
     def __init__(self):
@@ -255,14 +321,12 @@ class MainMenuView(arcade.View):
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         
-        # --- PERSIAPAN BACKGROUND ---
         self.bg_sprite_list = arcade.SpriteList()
         import os
         bg_path = "assets/bg/menu_bg.jpg" 
         
         if os.path.exists(bg_path):
             self.bg_sprite = arcade.Sprite(bg_path)
-            # FIX: Baca ukuran jendela secara dinamis
             self.bg_sprite.center_x = self.window.width / 2 
             self.bg_sprite.center_y = self.window.height / 2 
             self.bg_sprite.width = self.window.width
@@ -273,10 +337,6 @@ class MainMenuView(arcade.View):
             
         self.build_ui()
 
-        # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
-        # ==========================================
-        import os
         click_path = "assets/sfx/click.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
@@ -285,88 +345,108 @@ class MainMenuView(arcade.View):
 
     def build_ui(self):
         self.manager.clear()
-        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
 
-        title = arcade.gui.UILabel(text="FIHGTING ARENA", font_size=36, bold=True, text_color=arcade.color.GOLD)
-        v_box.add(title)
-        v_box.add(arcade.gui.UILabel(text="", height=10))
+        # ==========================================
+        # PANEL KIRI (FROSTED GLASS RATA KIRI)
+        # ==========================================
+        left_panel_width = 500
+        left_bg = arcade.gui.UISpace(width=left_panel_width, height=self.window.height, color=(10, 15, 20, 220))
+        left_anchor = arcade.gui.UIAnchorLayout()
+        left_anchor.add(child=left_bg, anchor_x="left", anchor_y="center")
+        self.manager.add(left_anchor)
 
-        start_btn = arcade.gui.UIFlatButton(text="⚔️ Mulai Bermain", width=250, height=45)
-        start_btn.on_click = self.on_start_click
-        v_box.add(start_btn)
+        # Kontainer VBox dengan align="left"
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=12, align="left")
+
+        # HEADER GAME (Typo Diperbaiki!)
+        title_box = arcade.gui.UIBoxLayout(vertical=True, space_between=2, align="left")
+        title_box.add(arcade.gui.UILabel(text="WELCOME TO", font_size=16, text_color=arcade.color.CYAN, bold=True))
+        title_box.add(arcade.gui.UILabel(text="FIGHTING ARENA", font_size=42, text_color=arcade.color.GOLD, bold=True))
+        title_box.add(arcade.gui.UILabel(text="Epic Turn-Based Battle", font_size=14, text_color=arcade.color.LIGHT_GRAY))
         
-        inv_btn = arcade.gui.UIFlatButton(text="🎒 Inventory", width=250, height=45)
-        inv_btn.on_click = self.on_inv_click
-        v_box.add(inv_btn)
+        v_box.add(title_box)
+        v_box.add(arcade.gui.UILabel(text="", height=40)) 
 
-        gacha_btn = arcade.gui.UIFlatButton(text="🎁 Gacha Equipment", width=250, height=45)
-        gacha_btn.on_click = self.on_gacha_click
-        v_box.add(gacha_btn)
+        # ==========================================
+        # GAYA TOMBOL MODERN (Transparan -> Menyala)
+        # ==========================================
+        menu_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": (255, 255, 255, 15), "border_color": (0,0,0,0), "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 2}
+        }
         
-        hist_btn = arcade.gui.UIFlatButton(text="📜 Riwayat Pertandingan", width=250, height=45)
-        hist_btn.on_click = self.on_hist_click
-        v_box.add(hist_btn)
+        exit_style = {
+            "normal": {"font_color": arcade.color.LIGHT_GRAY, "bg_color": (255, 255, 255, 10), "border_color": (0,0,0,0), "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.RED, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
 
-        quit_btn = arcade.gui.UIFlatButton(text="❌ Keluar", width=250, height=45)
-        quit_btn.on_click = self.on_quit_click
-        v_box.add(quit_btn)
+        def create_menu_btn(text, icon, action_func, is_exit=False):
+            style = exit_style if is_exit else menu_style
+            btn = arcade.gui.UIFlatButton(text=f"{icon}   {text}", width=360, height=55, style=style)
+            
+            def action_wrapper(event):
+                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                action_func(event)
+                
+            btn.on_click = action_wrapper
+            return btn
 
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor)
+        v_box.add(create_menu_btn("Mulai Bermain", "⚔️", self.on_start_click))
+        v_box.add(create_menu_btn("Inventory Equipment", "🎒", self.on_inv_click))
+        v_box.add(create_menu_btn("Gacha Terminal", "✨", self.on_gacha_click))
+        v_box.add(create_menu_btn("Riwayat Pertandingan", "📜", self.on_hist_click))
+        
+        v_box.add(arcade.gui.UILabel(text="", height=30)) 
+        v_box.add(create_menu_btn("Keluar Permainan", "❌", self.on_quit_click, is_exit=True))
 
+        content_anchor = arcade.gui.UIAnchorLayout()
+        content_anchor.add(child=v_box, anchor_x="left", anchor_y="center", align_x=45)
+        self.manager.add(content_anchor)
+
+        # Footer Versi
+        footer_anchor = arcade.gui.UIAnchorLayout()
+        footer_anchor.add(child=arcade.gui.UILabel(text="v1.0.0 | Epic Arena Project", font_size=11, text_color=arcade.color.GRAY), anchor_x="right", anchor_y="bottom", align_x=-20, align_y=20)
+        self.manager.add(footer_anchor)
+
+    # AKSI TOMBOL
     def on_start_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
-        # PASTIKAN memanggil ModeSelectionView, BUKAN DifficultySelectionView
         from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
 
     def on_inv_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import InventoryView 
         self.window.show_view(InventoryView())
 
     def on_gacha_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import GachaView
         self.window.show_view(GachaView())
         
     def on_hist_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
         self.manager.disable()
         from gui.views import HistoryView 
         self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
         arcade.exit()
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+        # PASTIKAN MUSIK MENU UTAMA DIPUTAR!
+        BGMManager.play("MENU")
 
     def on_draw(self):
         self.clear()
-        
-        # Gambar background terlebih dahulu agar berada di posisi paling belakang (dasar)
         if self.bg_sprite:
             self.bg_sprite_list.draw()
-            
-        # Gambar tombol dan UI di atasnya
         self.manager.draw()
 
     def on_resize(self, width: int, height: int):
-        """Fungsi bawaan Arcade yang dipanggil saat layar berubah ukuran."""
         super().on_resize(width, height)
-        
-        # Paksa gambar background menyesuaikan ukuran layar baru
         if hasattr(self, 'bg_sprite') and self.bg_sprite:
             self.bg_sprite.center_x = width / 2
             self.bg_sprite.center_y = height / 2
@@ -765,7 +845,8 @@ class GachaView(arcade.View):
         
         SaveManager.add_equipment(self.pulled_item_name)
         
-        self.manager.clear() 
+        self.manager.clear()
+        BGMManager.mute_for_sfx() 
         self.state = "SHAKING"
         self.anim_timer = 2.0 
         self.chest_scale = 1.0
@@ -784,6 +865,8 @@ class GachaView(arcade.View):
     def on_update(self, delta_time: float):
         self.time_elapsed += delta_time
         import math
+
+        BGMManager.update(delta_time)
         
         if self.state == "SHAKING":
             self.anim_timer -= delta_time
@@ -803,6 +886,7 @@ class GachaView(arcade.View):
             if self.anim_timer <= 0:
                 self.state = "REVEAL"
                 self.build_reveal_ui() # Memanggil Antarmuka Megah!
+                BGMManager.restore_volume()
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EERIE_BLACK)
@@ -1358,6 +1442,7 @@ class CharacterSelectionView(arcade.View):
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
+        BGMManager.play("SELECT")
 
     def on_draw(self):
         self.clear()
@@ -1962,6 +2047,7 @@ class GameOverView(arcade.View):
     def on_menu_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
             arcade.play_sound(self.sfx_click, volume=0.5)
+        BGMManager.play("MENU")
         self.manager.disable()
         self.window.show_view(MainMenuView())
 
@@ -2250,6 +2336,15 @@ class BattleView(arcade.View):
         self.difficulty = difficulty
         self.player_types = player_types 
         
+        self.bgm_player = None
+
+        self.mode = "Endless" if endless_floor > 0 else "Normal"
+
+        if self.mode == "Endless":
+            BGMManager.play("BATTLE_ENDLESS")
+        else:
+            BGMManager.play("BATTLE")
+
         # --- PERSIAPAN BACKGROUND DINAMIS ---
         self.bg_sprite_list = arcade.SpriteList()
         import os
@@ -2339,20 +2434,6 @@ class BattleView(arcade.View):
         
         # Muat gambar karakter untuk pertama kalinya
         self.refresh_sprites()
-
-        # ==========================================
-        # SISTEM AUDIO (BGM & SFX)
-        # ==========================================
-        self.bgm_player = None
-        bgm_path = "assets/bgm/battle_theme.mp3" 
-        
-        import os
-        if os.path.exists(bgm_path):
-            self.bgm = arcade.load_sound(bgm_path)
-            # Mainkan BGM otomatis (looping) dengan volume 40%
-            self.bgm_player = arcade.play_sound(self.bgm, volume=0.4, loop=True)
-        else:
-            print("❌ INFO: BGM assets/bgm/battle_theme.mp3 tidak ditemukan.")
 
         # Fungsi pintar untuk memuat SFX
         def load_sfx(name):
@@ -2596,8 +2677,7 @@ class BattleView(arcade.View):
             alive_enemies = [i for i, c in enumerate(self.enemy_party) if c.current_hp > 0]
             if not alive_enemies:
                 self.manager.disable()
-                if self.bgm_player:
-                    arcade.stop_sound(self.bgm_player)
+                BGMManager.play("MENU")
                 if self.endless_floor > 0:
                     self.window.show_view(EndlessRewardView(self.player_party, self.endless_floor, self.player_types))
                 else:
@@ -2618,8 +2698,7 @@ class BattleView(arcade.View):
             alive_players = [i for i, c in enumerate(self.player_party) if c.current_hp > 0]
             if not alive_players:
                 self.manager.disable()
-                if self.bgm_player:
-                    arcade.stop_sound(self.bgm_player)
+                BGMManager.play("MENU")
                 self.window.show_view(GameOverView("Tim Musuh", "Tim Pemain", self.p2_active.current_hp, False, self.difficulty, self.player_types))
                 return True
             else:
@@ -3313,6 +3392,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EERIE_BLACK)
+        BGMManager.play("SELECT")
 
     def on_draw(self):
         self.clear()
