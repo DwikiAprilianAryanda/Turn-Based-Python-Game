@@ -2770,10 +2770,10 @@ class BattleView(arcade.View):
         
         # HUD di atas
         self.p1_hp_bar = StatusBar(self.p1_active, x=sw * 0.22, y=sh * 0.90, width=bar_width, height=24, is_mana=False)
-        self.p1_mana_bar = StatusBar(self.p1_active, x=sw * 0.22, y=sh * 0.86, width=bar_width * 0.8, height=14, is_mana=True)
+        self.p1_mana_bar = StatusBar(self.p1_active, x=sw * 0.22, y=sh * 0.86, width=bar_width * 1, height=14, is_mana=True)
         
         self.p2_hp_bar = StatusBar(self.p2_active, x=sw * 0.78, y=sh * 0.90, width=bar_width, height=24, is_mana=False)
-        self.p2_mana_bar = StatusBar(self.p2_active, x=sw * 0.78, y=sh * 0.86, width=bar_width * 0.8, height=14, is_mana=True)
+        self.p2_mana_bar = StatusBar(self.p2_active, x=sw * 0.78, y=sh * 0.86, width=bar_width * 1, height=14, is_mana=True)
 
     def refresh_sprites(self):
         if not hasattr(self, 'battler_sprites'):
@@ -2953,14 +2953,29 @@ class BattleView(arcade.View):
 
         # Tombol Pause
         pause_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": (30, 120, 200, 255), "border_color": (150, 200, 255, 255), "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": (50, 150, 230, 255), "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.LIGHT_GRAY, "bg_color": (20, 90, 160, 255), "border_color": arcade.color.GRAY, "border_width": 2}
+            "normal": {
+                "font_color": arcade.color.WHITE,
+                "bg_color": (20, 30, 50, 180),
+                "border_color": arcade.color.CYAN,
+                "border_width": 2
+            },
+            "hover": {
+                "font_color": arcade.color.GOLD,
+                "bg_color": (40, 60, 100, 200),
+                "border_color": arcade.color.GOLD,
+                "border_width": 2
+            },
+            "press": {
+                "font_color": arcade.color.WHITE,
+                "bg_color": (10, 20, 40, 220),
+                "border_color": arcade.color.CYAN,
+                "border_width": 2
+            }
         }
         pause_btn = arcade.gui.UIFlatButton(text="⏸", width=45, height=45, style=pause_style)
         pause_btn.on_click = lambda e: self.toggle_pause()
         anchor_pause = arcade.gui.UIAnchorLayout()
-        anchor_pause.add(child=pause_btn, anchor_x="center", anchor_y="top", align_y=-10)
+        anchor_pause.add(child=pause_btn, anchor_x="center", anchor_y="top", align_y=-3)
         self.manager.add(anchor_pause)
 
     # ... (Fungsi build_pause_ui TETAP SAMA) ...
