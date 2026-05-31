@@ -2620,8 +2620,21 @@ class BattleView(arcade.View):
         import os
 
         def get_base_name(char):
-            full_name = char.name 
-            return full_name.split()[0].lower() 
+            full_name = char.name
+            
+            # Hapus suffix "(P1)", "(Musuh 1)" dll
+            clean = full_name.split('(')[0].strip()
+            
+            # Jika format "Lantai X NamaKarakter", ambil kata TERAKHIR
+            known_chars = ["emperor", "gladiator", "assassin", "mage", "knight", "valkyrie"]
+            words = clean.lower().split()
+            
+            for word in reversed(words):  # Cari dari belakang
+                if word in known_chars:
+                    return word
+    
+            # Fallback: ambil kata pertama
+            return words[0] if words else "emperor" 
 
         def find_image(name):
             for ext in ['.png', '.jpg', '.jpeg']:
