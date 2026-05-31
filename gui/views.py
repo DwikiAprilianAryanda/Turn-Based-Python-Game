@@ -13,13 +13,55 @@ from engine.history_manager import HistoryManager
 from engine.save_manager import SaveManager, DIFFICULTY_SETTINGS
 from engine.gacha_system import GachaSystem
 
+# # Tambahkan di paling atas views.py, setelah import arcade
+# _original_play_sound = arcade.play_sound
+
+# def _debug_play_sound(sound, volume=1.0, **kwargs):
+#     import traceback
+#     print(f"🎵 arcade.play_sound dipanggil! volume={volume}")
+#     traceback.print_stack(limit=5)
+#     return _original_play_sound(sound, volume=volume, **kwargs)
+
+# arcade.play_sound = _debug_play_sound
+
 class BGMManager:
     player = None
     current_track = None
     target_vol = 1.0
     current_vol = 1.0
-    fade_speed = 0.5  # Kecepatan transisi volume
+    fade_speed = 0.5
     sfx_vol = 0.5
+    
+    # Tambahkan ini:
+    _pre_gacha_vol = 1.0  # Simpan volume sebelum gacha
+    _fade_speed_gacha = 1.5  # Lebih lambat = lebih smooth
+
+    @classmethod
+    def mute_for_sfx(cls):
+        """Fade OUT pelan saat gacha dimulai"""
+        cls._pre_gacha_vol = cls.target_vol  # Simpan volume asli
+        cls.target_vol = 0.0  # Fade ke 0 (bukan langsung 0.1)
+
+    @classmethod
+    def restore_volume(cls):
+        """Fade IN pelan saat gacha selesai"""
+        cls.target_vol = cls._pre_gacha_vol  # Kembalikan ke volume asli
+
+    @classmethod
+    def update(cls, delta_time):
+        if not cls.player:
+            return
+
+        if cls.current_vol < cls.target_vol:
+            # Fade IN — gunakan kecepatan gacha saat restore
+            speed = cls._fade_speed_gacha if cls.target_vol > 0.5 else cls.fade_speed
+            cls.current_vol = min(cls.target_vol, cls.current_vol + (speed * delta_time))
+            cls.player.volume = cls.current_vol
+        elif cls.current_vol > cls.target_vol:
+            # Fade OUT — lebih cepat saat mute gacha
+            speed = cls._fade_speed_gacha if cls.target_vol == 0.0 else (cls.fade_speed * 3)
+            cls.current_vol = max(cls.target_vol, cls.current_vol - (speed * delta_time))
+            cls.player.volume = cls.current_vol
 
     @classmethod
     def play_sfx(cls, sound):
@@ -62,29 +104,29 @@ class BGMManager:
                 # Jika 'loop' juga tidak dikenali, gunakan ini:
                 cls.player = sound.play(volume=1.0)
             
-    @classmethod
-    def mute_for_sfx(cls):
-        """Panggil ini saat animasi gacha dimulai"""
-        cls.target_vol = 0.1  # Jangan 0 mutlak, 0.1 agar masih terdengar samar-samar
+    # @classmethod
+    # def mute_for_sfx(cls):
+    #     """Panggil ini saat animasi gacha dimulai"""
+    #     cls.target_vol = 0.1  # Jangan 0 mutlak, 0.1 agar masih terdengar samar-samar
         
-    @classmethod
-    def restore_volume(cls):
-        """Panggil ini saat hadiah gacha sudah muncul"""
-        cls.target_vol = 1.0
+    # @classmethod
+    # def restore_volume(cls):
+    #     """Panggil ini saat hadiah gacha sudah muncul"""
+    #     cls.target_vol = 1.0
 
-    @classmethod
-    def update(cls, delta_time):
-        """Mengatur transisi suara agar mulus (fade in / fade out)"""
-        if not cls.player:
-            return
+    # @classmethod
+    # def update(cls, delta_time):
+    #     """Mengatur transisi suara agar mulus (fade in / fade out)"""
+    #     if not cls.player:
+    #         return
             
-        if cls.current_vol < cls.target_vol:
-            cls.current_vol = min(cls.target_vol, cls.current_vol + (cls.fade_speed * delta_time))
-            cls.player.volume = cls.current_vol
-        elif cls.current_vol > cls.target_vol:
-            # Fade out sedikit lebih cepat dari fade in
-            cls.current_vol = max(cls.target_vol, cls.current_vol - (cls.fade_speed * 3 * delta_time))
-            cls.player.volume = cls.current_vol
+    #     if cls.current_vol < cls.target_vol:
+    #         cls.current_vol = min(cls.target_vol, cls.current_vol + (cls.fade_speed * delta_time))
+    #         cls.player.volume = cls.current_vol
+    #     elif cls.current_vol > cls.target_vol:
+    #         # Fade out sedikit lebih cepat dari fade in
+    #         cls.current_vol = max(cls.target_vol, cls.current_vol - (cls.fade_speed * 3 * delta_time))
+    #         cls.player.volume = cls.current_vol
 
 class SettingsView(arcade.View):
     def __init__(self):
@@ -668,6 +710,14 @@ class GachaView(arcade.View):
         else:
             self.sfx_click2 = None
 
+    @classmethod
+    def play_sfx(cls, sound):
+        if sound:
+            import traceback
+            print(f"🔊 play_sfx dipanggil!")
+            traceback.print_stack(limit=6)
+            arcade.play_sound(sound, volume=cls.sfx_vol)
+    
     # ==========================================
     # UI STATE: IDLE (BANNER UTAMA ALA GAME AAA)
     # ==========================================
@@ -689,7 +739,8 @@ class GachaView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="< Kembali", width=120, height=40, style=cancel_style)
         
         def on_back_sfx(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: 
+                BGMManager.play_sfx(self.sfx_click2)  # ← fix
             self.on_back_click(event)
             
         back_btn.on_click = on_back_sfx
@@ -823,10 +874,24 @@ class GachaView(arcade.View):
         pull_btn = arcade.gui.UIFlatButton(text="✨ Tarik 1x ✨", width=240, height=60, style=gacha_btn_style)
         
         # Membungkus aksi klik dengan SFX
+        # Sekarang on_pull_sfx yang handle SFX, hapus dari on_pull_click
         def on_pull_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
-            self.on_pull_click(event)
+            if getattr(self, '_pulling', False):
+                return
+            self._pulling = True
             
+            if hasattr(self, 'sfx_click') and self.sfx_click:
+                if hasattr(self, 'sfx_gacha_player') and self.sfx_gacha_player:
+                    try:
+                        self.sfx_gacha_player.pause()
+                    except:
+                        pass
+                self.sfx_gacha_player = arcade.play_sound(
+                    self.sfx_click, volume=BGMManager.sfx_vol
+                )
+            self.on_pull_click(event)
+            self._pulling = False
+
         pull_btn.on_click = on_pull_sfx
         pull_box.add(pull_btn)
         
@@ -843,8 +908,9 @@ class GachaView(arcade.View):
         info_btn = arcade.gui.UIFlatButton(text="ℹ️ Rincian Drop Rate", width=200, height=45, style=info_style)
         
         def on_info_click(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
-            self.build_info_ui() # Memanggil layar info!
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: 
+                BGMManager.play_sfx(self.sfx_click2)  # ← fix
+            self.build_info_ui()
             
         info_btn.on_click = on_info_click
         info_anchor.add(child=info_btn, anchor_x="left", anchor_y="bottom", align_x=50, align_y=50)
@@ -892,8 +958,9 @@ class GachaView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="Tutup & Kembali", width=250, height=50, style=cancel_style)
         
         def on_close_info(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
-            self.build_ui() # Kembali ke layar Banner utama
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: 
+                BGMManager.play_sfx(self.sfx_click2)  # ← bukan sfx_click
+            self.build_ui()
             
         back_btn.on_click = on_close_info
         main_box.add(back_btn)
@@ -971,7 +1038,8 @@ class GachaView(arcade.View):
         btn = arcade.gui.UIFlatButton(text="Lanjutkan", width=300, height=60, style=rpg_btn_style)
         
         def on_continue_sfx(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: 
+                BGMManager.play_sfx(self.sfx_click2)  # ← ganti ke sfx_click2
             self.on_continue_click(event)
             
         btn.on_click = on_continue_sfx
@@ -991,8 +1059,6 @@ class GachaView(arcade.View):
         else: return arcade.color.WHITE
 
     def on_pull_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
         from engine.gacha_system import GachaSystem
         from engine.save_manager import SaveManager
 
@@ -1010,10 +1076,13 @@ class GachaView(arcade.View):
         
         SaveManager.add_equipment(self.pulled_item_name)
         
+        # Fade out BGM — jalan paralel dengan animasi, tidak menunggu
+        BGMManager.mute_for_sfx()
+        
+        # Langsung mulai animasi tanpa delay
         self.manager.clear()
-        BGMManager.mute_for_sfx() 
         self.state = "SHAKING"
-        self.anim_timer = 2.0 
+        self.anim_timer = 2.0
         self.chest_scale = 1.0
         self.error_msg = ""
 
@@ -1024,8 +1093,16 @@ class GachaView(arcade.View):
         self.window.show_view(MainMenuView())
 
     def on_continue_click(self, event):
+        if getattr(self, '_continuing', False):
+            return
+        self._continuing = True
+        
+        self.sfx_gacha_player = None
         self.state = "IDLE"
         self.build_ui()
+        
+        # Reset flag setelah build selesai
+        self._continuing = False
 
     def on_update(self, delta_time: float):
         self.time_elapsed += delta_time
@@ -1041,7 +1118,7 @@ class GachaView(arcade.View):
             
             if self.anim_timer <= 0:
                 self.state = "FLASH"
-                self.anim_timer = 0.5 
+                self.anim_timer = 0.5
                 self.flash_alpha = 255
                 
         elif self.state == "FLASH":
@@ -1049,9 +1126,19 @@ class GachaView(arcade.View):
             self.flash_alpha = max(0, int((self.anim_timer / 0.5) * 255))
             
             if self.anim_timer <= 0:
+                # JANGAN hentikan SFX di sini — biarkan habis sendiri
+                self.sfx_gacha_player = None  # Lepas referensi saja tanpa pause
+                
+                # JANGAN tunggu fade in — langsung reveal
                 self.state = "REVEAL"
-                self.build_reveal_ui() # Memanggil Antarmuka Megah!
-                BGMManager.restore_volume()
+                self.build_reveal_ui()
+                BGMManager.restore_volume()  # Fade in BGM berjalan paralel dengan reveal
+
+        elif self.state == "FADING_IN":
+            self.anim_timer -= delta_time
+            if self.anim_timer <= 0:
+                self.state = "REVEAL"
+                self.build_reveal_ui()
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.EERIE_BLACK)
@@ -2686,9 +2773,16 @@ class BattleView(arcade.View):
         def create_roster_card(char, status, click_action=None):
             card = arcade.gui.UIBoxLayout(vertical=False, space_between=8)
             
-            # 1. Cari Gambar Wajah (Portrait)
             import os
-            base_name = char.name.split()[0].lower()
+            # FIX: Cari nama karakter valid dari belakang
+            known_chars = ["emperor", "gladiator", "assassin", "mage", "knight", "valkyrie"]
+            words = char.name.split('(')[0].strip().lower().split()
+            base_name = words[0]  # fallback
+            for word in reversed(words):
+                if word in known_chars:
+                    base_name = word
+                    break
+
             face_tex = None
             for ext in ['.png', '.jpg', '.jpeg']:
                 path = f"assets/{base_name}_menu{ext}"
@@ -2776,6 +2870,23 @@ class BattleView(arcade.View):
         anchor_bottom = arcade.gui.UIAnchorLayout()
         anchor_bottom.add(child=self.h_box, anchor_x="center", anchor_y="bottom", align_y=40)
         self.manager.add(anchor_bottom)
+
+        # Tombol pause ikon pojok kanan atas
+        pause_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": (0, 0, 0, 150), "border_color": arcade.color.GRAY, "border_width": 1},
+            "hover": {"font_color": arcade.color.GOLD, "bg_color": (50, 50, 50, 200), "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": (20, 20, 20, 200), "border_color": arcade.color.WHITE, "border_width": 1}
+        }
+        pause_btn = arcade.gui.UIFlatButton(text="⏸", width=50, height=50, style=pause_style)
+
+        def on_pause_btn(event):
+            BGMManager.play_sfx(self.sfx_click)
+            self.toggle_pause()
+
+        pause_btn.on_click = on_pause_btn
+        anchor_pause = arcade.gui.UIAnchorLayout()
+        anchor_pause.add(child=pause_btn, anchor_x="right", anchor_y="top", align_x=-20, align_y=-20)
+        self.manager.add(anchor_pause)
 
     def make_swap_action(self, target_idx):
         def action(event):
@@ -2890,6 +3001,148 @@ class BattleView(arcade.View):
                 self.p1_active.on_turn_start()
                 return True
         return False
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.ESCAPE:
+            self.toggle_pause()
+
+    def toggle_pause(self):
+        self.is_paused = not getattr(self, 'is_paused', False)
+        if self.is_paused:
+            self.build_pause_ui()
+        else:
+            self.build_ui()
+
+    def build_pause_ui(self):
+        self.manager.clear()
+
+        # Dimmer gelap
+        dimmer = arcade.gui.UISpace(
+            width=self.window.width, height=self.window.height,
+            color=(0, 0, 0, 180)
+        )
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        # Panel utama
+        panel_width, panel_height = 420, 520
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 240))
+        panel_wrapper.add(child=panel_bg)
+
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        v_box.add(arcade.gui.UILabel(text="⏸ GAME PAUSED", font_size=28, bold=True, text_color=arcade.color.GOLD))
+        v_box.add(arcade.gui.UILabel(text="", height=5))
+
+        btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+        quit_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+
+        # ==========================================
+        # SECTION BGM
+        # ==========================================
+        bgm_vol_pct = int(BGMManager.target_vol * 100)
+        v_box.add(arcade.gui.UILabel(text=f"🎵 BGM: {bgm_vol_pct}%", font_size=16, text_color=arcade.color.WHITE, bold=True))
+
+        bgm_row = arcade.gui.UIBoxLayout(vertical=False, space_between=8)
+        btn_bgm_down = arcade.gui.UIFlatButton(text="🔉", width=80, height=40, style=btn_style)
+        btn_bgm_mute = arcade.gui.UIFlatButton(text="🔇", width=80, height=40, style=quit_style)
+        btn_bgm_up   = arcade.gui.UIFlatButton(text="🔊", width=80, height=40, style=btn_style)
+
+        bgm_filled = int(BGMManager.target_vol * 10)
+        bgm_bar = "█" * bgm_filled + "░" * (10 - bgm_filled)
+        bgm_bar_color = arcade.color.LIME_GREEN if bgm_filled > 3 else arcade.color.RED
+
+        def on_bgm_down(event):
+            BGMManager.target_vol = max(0.0, round(BGMManager.target_vol - 0.1, 1))
+            self.build_pause_ui()
+        def on_bgm_up(event):
+            BGMManager.target_vol = min(1.0, round(BGMManager.target_vol + 0.1, 1))
+            self.build_pause_ui()
+        def on_bgm_mute(event):
+            BGMManager.target_vol = 0.0 if BGMManager.target_vol > 0 else 1.0
+            self.build_pause_ui()
+
+        btn_bgm_down.on_click = on_bgm_down
+        btn_bgm_up.on_click   = on_bgm_up
+        btn_bgm_mute.on_click = on_bgm_mute
+        bgm_row.add(btn_bgm_down)
+        bgm_row.add(btn_bgm_mute)
+        bgm_row.add(btn_bgm_up)
+        v_box.add(bgm_row)
+        v_box.add(arcade.gui.UILabel(text=bgm_bar, font_size=18, text_color=bgm_bar_color, bold=True))
+
+        v_box.add(arcade.gui.UILabel(text="", height=5))
+
+        # ==========================================
+        # SECTION SFX
+        # ==========================================
+        sfx_vol_pct = int(BGMManager.sfx_vol * 100)
+        v_box.add(arcade.gui.UILabel(text=f"🔔 SFX & Klik: {sfx_vol_pct}%", font_size=16, text_color=arcade.color.WHITE, bold=True))
+
+        sfx_row = arcade.gui.UIBoxLayout(vertical=False, space_between=8)
+        btn_sfx_down = arcade.gui.UIFlatButton(text="🔉", width=80, height=40, style=btn_style)
+        btn_sfx_mute = arcade.gui.UIFlatButton(text="🔇", width=80, height=40, style=quit_style)
+        btn_sfx_up   = arcade.gui.UIFlatButton(text="🔊", width=80, height=40, style=btn_style)
+
+        sfx_filled = int(BGMManager.sfx_vol * 10)
+        sfx_bar = "█" * sfx_filled + "░" * (10 - sfx_filled)
+        sfx_bar_color = arcade.color.CYAN if sfx_filled > 3 else arcade.color.RED
+
+        def on_sfx_down(event):
+            BGMManager.sfx_vol = max(0.0, round(BGMManager.sfx_vol - 0.1, 1))
+            self.build_pause_ui()
+        def on_sfx_up(event):
+            BGMManager.sfx_vol = min(1.0, round(BGMManager.sfx_vol + 0.1, 1))
+            self.build_pause_ui()
+        def on_sfx_mute(event):
+            BGMManager.sfx_vol = 0.0 if BGMManager.sfx_vol > 0 else 0.5
+            self.build_pause_ui()
+
+        btn_sfx_down.on_click = on_sfx_down
+        btn_sfx_up.on_click   = on_sfx_up
+        btn_sfx_mute.on_click = on_sfx_mute
+        sfx_row.add(btn_sfx_down)
+        sfx_row.add(btn_sfx_mute)
+        sfx_row.add(btn_sfx_up)
+        v_box.add(sfx_row)
+        v_box.add(arcade.gui.UILabel(text=sfx_bar, font_size=18, text_color=sfx_bar_color, bold=True))
+
+        v_box.add(arcade.gui.UILabel(text="", height=10))
+
+        # ==========================================
+        # TOMBOL AKSI
+        # ==========================================
+        btn_resume = arcade.gui.UIFlatButton(text="▶ LANJUTKAN", width=320, height=55, style=btn_style)
+        btn_quit   = arcade.gui.UIFlatButton(text="❌ KELUAR KE MENU UTAMA", width=320, height=55, style=quit_style)
+
+        def on_resume(event):
+            BGMManager.play_sfx(self.sfx_click)
+            self.toggle_pause()
+
+        def on_quit(event):
+            BGMManager.play_sfx(self.sfx_click)
+            BGMManager.play("MENU")
+            self.manager.disable()
+            self.window.show_view(MainMenuView())
+
+        btn_resume.on_click = on_resume
+        btn_quit.on_click   = on_quit
+        v_box.add(btn_resume)
+        v_box.add(btn_quit)
+
+        panel_wrapper.add(child=v_box, anchor_x="center", anchor_y="center")
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
 
     def on_attack_click(self, event):
         if not self.is_player_turn: return 
@@ -3016,6 +3269,9 @@ class BattleView(arcade.View):
         self.enemy_delay_timer = 1.5
 
     def on_update(self, delta_time: float):
+        BGMManager.update(delta_time)
+        if getattr(self, 'is_paused', False):
+            return
         self.time_elapsed += delta_time
         
         for f_text in self.floating_texts:
