@@ -513,17 +513,35 @@ class ModeSelectionView(arcade.View):
             self.bg_sprite.width = width
             self.bg_sprite.height = height
 
-# ==========================================
-# 2. LAYAR MENU UTAMA (UPDATE: AAA STYLE & BGM)
-# ==========================================
+# =====================================================================
+# 2. LAYAR MENU UTAMA (CLEAN CODE & KEYBOARD NAVIGATION)
+# =====================================================================
+import arcade
+import os
+from gui.views import BGMManager  # Pastikan import ini sesuai dengan file Anda
+
 class MainMenuView(arcade.View):
+    # ==========================================
+    # 1. INISIALISASI & SETUP
+    # ==========================================
     def __init__(self):
         super().__init__()
+        
+        # --- Setup Manager ---
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         
+        # --- Setup Navigasi Keyboard ---
+        self.selected_index = 0
+        self.menu_buttons = []
+
+        # --- Eksekusi Awal ---
+        self._load_assets()
+        self.build_ui()
+
+    def _load_assets(self):
+        """Memuat semua aset visual dan suara yang dibutuhkan menu ini."""
         self.bg_sprite_list = arcade.SpriteList()
-        import os
         bg_path = "assets/bg/menu_bg.jpg" 
         
         if os.path.exists(bg_path):
@@ -536,75 +554,63 @@ class MainMenuView(arcade.View):
         else:
             self.bg_sprite = None
             
-        self.build_ui()
-
         click_path = "assets/sfx/click.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
         else:
             self.sfx_click = None
 
+    # ==========================================
+    # 2. PEMBANGUNAN ANTARMUKA (UI)
+    # ==========================================
     def build_ui(self):
         self.manager.clear()
+        self.menu_buttons.clear()
 
-        # ==========================================
-        # PANEL KIRI (FROSTED GLASS RATA KIRI)
-        # ==========================================
+        # --- Panel Kaca Gelap (Kiri) ---
         left_panel_width = 500
         left_bg = arcade.gui.UISpace(width=left_panel_width, height=self.window.height, color=(10, 15, 20, 220))
         left_anchor = arcade.gui.UIAnchorLayout()
         left_anchor.add(child=left_bg, anchor_x="left", anchor_y="center")
         self.manager.add(left_anchor)
 
-        # Kontainer VBox dengan align="left"
+        # --- Kontainer Utama (VBox) ---
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=12, align="left")
 
-        # HEADER GAME (Typo Diperbaiki!)
+        # Header & Teks Panduan Keyboard
         title_box = arcade.gui.UIBoxLayout(vertical=True, space_between=2, align="left")
         title_box.add(arcade.gui.UILabel(text="WELCOME TO", font_size=16, text_color=arcade.color.CYAN, bold=True))
         title_box.add(arcade.gui.UILabel(text="FIGHTING ARENA", font_size=42, text_color=arcade.color.GOLD, bold=True))
         title_box.add(arcade.gui.UILabel(text="Epic Turn-Based Battle", font_size=14, text_color=arcade.color.LIGHT_GRAY))
+        title_box.add(arcade.gui.UILabel(text="", height=10))
+        # Teks Informatif UI Keyboard
+        title_box.add(arcade.gui.UILabel(text="[Panah Atas/Bawah] Navigasi  |  [ENTER] Pilih", font_size=11, text_color=arcade.color.YELLOW, bold=True))
         
         v_box.add(title_box)
-        v_box.add(arcade.gui.UILabel(text="", height=40)) 
-
-        # ==========================================
-        # GAYA TOMBOL MODERN (Transparan -> Menyala)
-        # ==========================================
-        menu_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": (255, 255, 255, 15), "border_color": (0,0,0,0), "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
-            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 2}
-        }
-        
-        exit_style = {
-            "normal": {"font_color": arcade.color.LIGHT_GRAY, "bg_color": (255, 255, 255, 10), "border_color": (0,0,0,0), "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.RED, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
-        }
-
-        def create_menu_btn(text, icon, action_func, is_exit=False):
-            style = exit_style if is_exit else menu_style
-            btn = arcade.gui.UIFlatButton(text=f"{icon}   {text}", width=360, height=55, style=style)
-            
-            def action_wrapper(event):
-                if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
-                action_func(event)
-                
-            btn.on_click = action_wrapper
-            return btn
-
-        v_box.add(create_menu_btn("Mulai Bermain", "⚔️", self.on_start_click))
-        v_box.add(create_menu_btn("Inventory Equipment", "🎒", self.on_inv_click))
-        v_box.add(create_menu_btn("Gacha Terminal", "✨", self.on_gacha_click))
-        # v_box.add(create_menu_btn("Riwayat Pertandingan", "📜", self.on_hist_click))
-        v_box.add(create_menu_btn("Pengaturan Suara", "⚙️", self.on_settings_click))
-        
         v_box.add(arcade.gui.UILabel(text="", height=30)) 
-        v_box.add(create_menu_btn("Keluar Permainan", "❌", self.on_quit_click, is_exit=True))
 
+        # --- Daftar Menu & Pembuatan Tombol ---
+        menus = [
+            ("Mulai Bermain", "⚔️", self.on_start_click, False),
+            ("Inventory Equipment", "🎒", self.on_inv_click, False),
+            ("Gacha Terminal", "✨", self.on_gacha_click, False),
+            ("Pengaturan Suara", "⚙️", self.on_settings_click, False),
+            ("Keluar Permainan", "❌", self.on_quit_click, True)
+        ]
+
+        for text, icon, action, is_exit in menus:
+            btn = self._create_menu_btn(text, icon, action, is_exit)
+            self.menu_buttons.append(btn) # Simpan ke list untuk navigasi keyboard
+            
+            # Spacer ekstra sebelum tombol keluar
+            if is_exit: 
+                v_box.add(arcade.gui.UILabel(text="", height=30))
+                
+            v_box.add(btn)
+
+        # Menempelkan VBox ke Layar
         content_anchor = arcade.gui.UIAnchorLayout()
-        content_anchor.add(child=v_box, anchor_x="left", anchor_y="center", align_x=45)
+        content_anchor.add(child=v_box, anchor_x="left", anchor_y="center", align_x=60) # Digeser sedikit ke kanan (60) untuk ruang kursor
         self.manager.add(content_anchor)
 
         # Footer Versi
@@ -612,7 +618,53 @@ class MainMenuView(arcade.View):
         footer_anchor.add(child=arcade.gui.UILabel(text="v1.0.0 | Epic Arena Project", font_size=11, text_color=arcade.color.GRAY), anchor_x="right", anchor_y="bottom", align_x=-20, align_y=20)
         self.manager.add(footer_anchor)
 
-    # AKSI TOMBOL
+    def _create_menu_btn(self, text, icon, action_func, is_exit):
+        """Helper untuk membuat tombol konsisten"""
+        menu_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": (255, 255, 255, 15), "border_color": (0,0,0,0), "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 2}
+        }
+        exit_style = {
+            "normal": {"font_color": arcade.color.LIGHT_GRAY, "bg_color": (255, 255, 255, 10), "border_color": (0,0,0,0), "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.RED, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+
+        style = exit_style if is_exit else menu_style
+        btn = arcade.gui.UIFlatButton(text=f"{icon}   {text}", width=360, height=55, style=style)
+        
+        def action_wrapper(event=None): # Default None agar bisa dipanggil manual oleh keyboard
+            if hasattr(self, 'sfx_click') and self.sfx_click: 
+                try: BGMManager.play_sfx(self.sfx_click)
+                except: arcade.play_sound(self.sfx_click)
+            action_func(event)
+            
+        btn.on_click = action_wrapper
+        return btn
+
+
+    # ==========================================
+    # 3. KONTROL KEYBOARD (NAVIGASI)
+    # ==========================================
+    def on_key_press(self, key, modifiers):
+        if not self.menu_buttons: 
+            return
+
+        if key == arcade.key.DOWN:
+            self.selected_index = (self.selected_index + 1) % len(self.menu_buttons)
+            # Mainkan suara tik ringan jika ada (opsional)
+        elif key == arcade.key.UP:
+            self.selected_index = (self.selected_index - 1) % len(self.menu_buttons)
+        elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
+            # Eksekusi fungsi klik tombol yang sedang dipilih
+            active_btn = self.menu_buttons[self.selected_index]
+            active_btn.on_click(None)
+
+
+    # ==========================================
+    # 4. AKSI TOMBOL MENU
+    # ==========================================
     def on_settings_click(self, event):
         self.manager.disable()
         from gui.views import SettingsView
@@ -632,25 +684,43 @@ class MainMenuView(arcade.View):
         self.manager.disable()
         from gui.views import GachaView
         self.window.show_view(GachaView())
-        
-    # def on_hist_click(self, event):
-    #     self.manager.disable()
-    #     from gui.views import HistoryView 
-    #     self.window.show_view(HistoryView())
 
     def on_quit_click(self, event):
         arcade.exit()
 
+
+    # ==========================================
+    # 5. SIKLUS RENDER GAME
+    # ==========================================
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
-        # PASTIKAN MUSIK MENU UTAMA DIPUTAR!
         BGMManager.play("MENU")
 
     def on_draw(self):
         self.clear()
+        
+        # 1. Gambar Background
         if self.bg_sprite:
             self.bg_sprite_list.draw()
+            
+        # 2. Gambar UI Manager (Semua Tombol & Panel)
         self.manager.draw()
+
+        # 3. Gambar Kursor Animasi (▶)
+        if self.menu_buttons:
+            active_btn = self.menu_buttons[self.selected_index]
+            
+            # Arcade GUI menyimpan kordinat komponen di dalam properti .rect setelah dirender
+            cursor_x = active_btn.rect.left - 25
+            cursor_y = active_btn.rect.center_y
+            
+            # Efek berkedip perlahan (Pulsing)
+            import math
+            import time
+            alpha = int(200 + 55 * math.sin(time.time() * 8))
+            pulsing_color = (*arcade.color.GOLD[:3], alpha)
+            
+            arcade.draw_text("▶", cursor_x, cursor_y, pulsing_color, 20, bold=True, anchor_x="center", anchor_y="center")
 
     def on_resize(self, width: int, height: int):
         super().on_resize(width, height)
@@ -1193,1067 +1263,1088 @@ class GachaView(arcade.View):
             self.bg_sprite.width = width
             self.bg_sprite.height = height
 
-# ==========================================
-# 3. LAYAR PILIH KESULITAN (UPDATE: FROSTED GLASS & REFACTORING)
-# ==========================================
+# =====================================================================
+# 3. LAYAR PILIH KESULITAN (FIXED UI BUG)
+# =====================================================================
+import arcade
+import math
+import time
+import os
+
 class DifficultySelectionView(arcade.View):
     def __init__(self, party_size):
         super().__init__()
         self.party_size = party_size
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
-        self.bg_sprite_list = arcade.SpriteList()
         
-        import os
-        bg_path = "assets/bg/standart_menu_bg.jpg" # Tinggal ganti nama file sesuai selera
+        self.selected_index = 0
+        self.menu_buttons = []
+
+        self._load_assets()
+        self.build_ui()
+
+    def _load_assets(self):
+        self.bg_sprite_list = arcade.SpriteList()
+        bg_path = "assets/bg/standart_menu_bg.jpg" 
         if os.path.exists(bg_path):
             self.bg_sprite = arcade.Sprite(bg_path)
-            self.bg_sprite.center_x = self.window.width / 2
-            self.bg_sprite.center_y = self.window.height / 2
-            self.bg_sprite.width = self.window.width
-            self.bg_sprite.height = self.window.height
+            self.bg_sprite.center_x, self.bg_sprite.center_y = self.window.width / 2, self.window.height / 2
+            self.bg_sprite.width, self.bg_sprite.height = self.window.width, self.window.height
             self.bg_sprite_list.append(self.bg_sprite)
         else:
             self.bg_sprite = None
             
-        # ==========================================
-        # MUAT SFX KLIK
-        # ==========================================
         click_path = "assets/sfx/click.mp3"
-        if os.path.exists(click_path):
-            self.sfx_click = arcade.load_sound(click_path)
-        else:
-            self.sfx_click = None
-
-        # Panggil pembuatan UI yang sudah dipisahkan agar rapi
-        self.build_ui()
+        self.sfx_click = arcade.load_sound(click_path) if os.path.exists(click_path) else None
 
     def build_ui(self):
         self.manager.clear()
-        
-        # ==========================================
-        # 1. JURUS DIMMER GLOBAL
-        # ==========================================
+        self.menu_buttons.clear()
+
+        # 1. Dimmer
         dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 190))
         dimmer_anchor = arcade.gui.UIAnchorLayout()
         dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
         self.manager.add(dimmer_anchor)
 
-        # ==========================================
-        # 2. PANEL KACA GELAP
-        # ==========================================
-        panel_width = 600
-        panel_height = 420
+        # 2. Panel Kaca
+        panel_width, panel_height = 600, 440
         panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
         panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
         panel_wrapper.add(child=panel_bg)
 
-        self.v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
         # Header
-        self.v_box.add(arcade.gui.UILabel(text="🔥 TINGKAT KESULITAN 🔥", font_size=26, bold=True, text_color=arcade.color.GOLD))
-        self.v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP & Gold yang didapat!", font_size=13, text_color=arcade.color.LIGHT_GRAY))
-        self.v_box.add(arcade.gui.UILabel(text="", height=15))
+        v_box.add(arcade.gui.UILabel(text="🔥 TINGKAT KESULITAN 🔥", font_size=26, bold=True, text_color=arcade.color.GOLD))
+        v_box.add(arcade.gui.UILabel(text="Semakin sulit, semakin banyak EXP & Gold yang didapat!", font_size=13, text_color=arcade.color.LIGHT_GRAY))
+        v_box.add(arcade.gui.UILabel(text="[Panah Atas/Bawah] Navigasi  |  [ENTER] Pilih", font_size=11, text_color=arcade.color.YELLOW))
+        v_box.add(arcade.gui.UILabel(text="", height=10))
         
-        # ==========================================
-        # 3. GAYA TOMBOL BERDASARKAN KESULITAN
-        # ==========================================
-        easy_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.WHITE, "border_width": 2}
-        }
-        
-        med_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.GOLD, "border_color": arcade.color.DARK_GOLDENROD, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.YELLOW, "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GOLDENROD, "border_color": arcade.color.WHITE, "border_width": 2}
-        }
-        
-        hard_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.RED, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.MAROON, "border_color": arcade.color.WHITE, "border_width": 2}
-        }
-        
-        cancel_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": (50, 50, 60, 255), "border_color": arcade.color.GRAY, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": (70, 70, 80, 255), "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": (30, 30, 40, 255), "border_color": arcade.color.WHITE, "border_width": 2}
-        }
+        easy_style = {"normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2}, "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.WHITE, "border_width": 2}, "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.WHITE, "border_width": 2}}
+        med_style = {"normal": {"font_color": arcade.color.BLACK, "bg_color": arcade.color.GOLD, "border_color": arcade.color.DARK_GOLDENROD, "border_width": 2}, "hover": {"font_color": arcade.color.BLACK, "bg_color": arcade.color.YELLOW, "border_color": arcade.color.WHITE, "border_width": 2}, "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GOLDENROD, "border_color": arcade.color.WHITE, "border_width": 2}}
+        hard_style = {"normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.RED, "border_width": 2}, "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2}, "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.MAROON, "border_color": arcade.color.WHITE, "border_width": 2}}
+        cancel_style = {"normal": {"font_color": arcade.color.WHITE, "bg_color": (50, 50, 60, 255), "border_color": arcade.color.GRAY, "border_width": 2}, "hover": {"font_color": arcade.color.WHITE, "bg_color": (70, 70, 80, 255), "border_color": arcade.color.WHITE, "border_width": 2}, "press": {"font_color": arcade.color.WHITE, "bg_color": (30, 30, 40, 255), "border_color": arcade.color.WHITE, "border_width": 2}}
 
-        def create_diff_btn(text, style, action_func):
+        def create_btn(text, style, action_func):
             btn = arcade.gui.UIFlatButton(text=text, width=480, height=50, style=style)
-            btn.on_click = action_func
+            def action_wrapper(event=None):
+                if self.sfx_click: 
+                    try:
+                        from gui.views import BGMManager
+                        BGMManager.play_sfx(self.sfx_click)
+                    except: arcade.play_sound(self.sfx_click)
+                action_func()
+            btn.on_click = action_wrapper
             return btn
 
-        # Eksekusi Pembuatan Tombol (Suara sudah dihandle di on_easy dll)
-        btn_easy = create_diff_btn("🟢 EASY (Musuh Max Lv 10  |  EXP x1.0)", easy_style, self.on_easy)
-        btn_medium = create_diff_btn("🟡 MEDIUM (Musuh Max Lv 30  |  EXP x1.5)", med_style, self.on_medium)
-        btn_hard = create_diff_btn("🔴 HARD (Musuh Max Lv 100  |  EXP x2.5)", hard_style, self.on_hard)
+        btn_easy = create_btn("🟢 EASY (Musuh Max Lv 10  |  EXP x1.0)", easy_style, lambda: self._select_diff("EASY"))
+        btn_medium = create_btn("🟡 MEDIUM (Musuh Max Lv 30  |  EXP x1.5)", med_style, lambda: self._select_diff("MEDIUM"))
+        btn_hard = create_btn("🔴 HARD (Musuh Max Lv 100  |  EXP x2.5)", hard_style, lambda: self._select_diff("HARD"))
+        btn_back = create_btn("Kembali ke Pemilihan Mode", cancel_style, self._go_back)
         
-        # Tombol kembali butuh pembungkus SFX karena di fungsi on_back_click asli belum ada
-        def on_back_wrapper(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
-            self.on_back_click(event)
+        for btn in [btn_easy, btn_medium, btn_hard]:
+            self.menu_buttons.append(btn)
+            v_box.add(btn)
             
-        btn_back = create_diff_btn("Kembali ke Pemilihan Mode", cancel_style, on_back_wrapper)
+        v_box.add(arcade.gui.UILabel(text="", height=10)) 
+        self.menu_buttons.append(btn_back)
+        v_box.add(btn_back)
         
-        self.v_box.add(btn_easy)
-        self.v_box.add(btn_medium)
-        self.v_box.add(btn_hard)
-        self.v_box.add(arcade.gui.UILabel(text="", height=10)) 
-        self.v_box.add(btn_back)
+        panel_wrapper.add(child=v_box, anchor_x="center", anchor_y="center")
         
-        panel_wrapper.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        
+        # FIX UTAMA: Harus menggunakan .add(child=...)
         anchor = arcade.gui.UIAnchorLayout()
         anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
         self.manager.add(anchor)
 
-    # ==========================================
-    # FUNGSI AKSI & LOGIKA
-    # ==========================================
-    def on_easy(self, event): 
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        self.select_diff("EASY")
-
-    def on_medium(self, event): 
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        self.select_diff("MEDIUM")
-
-    def on_hard(self, event): 
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        self.select_diff("HARD")
-
-    def select_diff(self, diff):
+    def _select_diff(self, diff):
         self.manager.disable()
-        from gui.views import CharacterSelectionView # Pastikan import ada atau disesuaikan
+        from gui.views import CharacterSelectionView 
         self.window.show_view(CharacterSelectionView(self.party_size, diff))
 
-    def on_back_click(self, event):
+    def _go_back(self):
         self.manager.disable()
-        from gui.views import ModeSelectionView # Pastikan import ada atau disesuaikan
+        from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
+
+    def on_key_press(self, key, modifiers):
+        if not self.menu_buttons: return
+        if key == arcade.key.DOWN:
+            self.selected_index = (self.selected_index + 1) % len(self.menu_buttons)
+        elif key == arcade.key.UP:
+            self.selected_index = (self.selected_index - 1) % len(self.menu_buttons)
+        elif key in (arcade.key.ENTER, arcade.key.SPACE):
+            self.menu_buttons[self.selected_index].on_click(None)
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
 
     def on_draw(self):
         self.clear()
-        if self.bg_sprite:
-            self.bg_sprite_list.draw()
+        if self.bg_sprite: self.bg_sprite_list.draw()
         self.manager.draw()
+        
+        if self.menu_buttons:
+            active_btn = self.menu_buttons[self.selected_index]
+            cx, cy = active_btn.rect.left - 25, active_btn.rect.center_y
+            alpha = int(200 + 55 * math.sin(time.time() * 8))
+            arcade.draw_text("▶", cx, cy, (*arcade.color.GOLD[:3], alpha), 20, bold=True, anchor_x="center", anchor_y="center")
 
-    def on_resize(self, width: int, height: int):
+    def on_resize(self, width, height):
         super().on_resize(width, height)
-        if hasattr(self, 'bg_sprite') and self.bg_sprite:
-            self.bg_sprite.center_x = width / 2
-            self.bg_sprite.center_y = height / 2
-            self.bg_sprite.width = width
-            self.bg_sprite.height = height
+        if self.bg_sprite:
+            self.bg_sprite.center_x, self.bg_sprite.center_y = width / 2, height / 2
+            self.bg_sprite.width, self.bg_sprite.height = width, height
 
-# ==========================================
-# 4. LAYAR PEMILIHAN KARAKTER (UPDATE: INFO STATS, PASIF & ULTIMATE)
-# ==========================================
+# =====================================================================
+# 4. LAYAR PEMILIHAN KARAKTER (FIXED VERSION)
+# BUG FIXES:
+# 1. UIManager.enable() dipanggil SEBELUM build_ui() di on_show_view
+# 2. build_ui() TIDAK dipanggil di __init__ (window belum siap)
+# 3. UIAnchorLayout root dibuat dengan size_hint=(1,1) agar full-window
+# 4. try/except sempit — error tidak lagi ditelan diam-diam
+# 5. selected_index direset aman setelah rebuild
+# =====================================================================
+import arcade
+import arcade.gui
+import math
+import time
+import os
+import random
+
+
 class CharacterSelectionView(arcade.View):
     def __init__(self, party_size, difficulty):
         super().__init__()
         self.party_size = party_size
         self.difficulty = difficulty
+
+        # PENTING: Jangan panggil .enable() di sini, dan jangan build_ui() di sini.
+        # Window belum siap saat __init__ dipanggil.
         self.manager = arcade.gui.UIManager()
-        self.manager.enable()
-        self.bg_sprite_list = arcade.SpriteList()
-        import os
-        bg_path = "assets/bg/select_standart_bg.jpg" # Tinggal ganti nama file sesuai selera
-        if os.path.exists(bg_path):
-            self.bg_sprite = arcade.Sprite(bg_path)
-            self.bg_sprite.center_x = self.window.width / 2
-            self.bg_sprite.center_y = self.window.height / 2
-            self.bg_sprite.width = self.window.width
-            self.bg_sprite.height = self.window.height
-            self.bg_sprite_list.append(self.bg_sprite)
-        else:
-            self.bg_sprite = None
+
+        # --- Navigasi Keyboard Grid ---
+        self.selected_index = 0
+        self.selectable_items = []
 
         self.available_characters = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
-        
-        # Peta Elemen Karakter untuk UI
         self.element_map = {
-            "Emperor": "🔴", "Mage": "🔴",       
-            "Gladiator": "🔵", "Knight": "🔵",     
-            "Assassin": "🌿", "Valkyrie": "🌿"    
+            "Emperor": "🔴", "Mage": "🔴",
+            "Gladiator": "🔵", "Knight": "🔵",
+            "Assassin": "🌿", "Valkyrie": "🌿"
         }
 
-        # DATABASE INFORMASI KARAKTER LENGKAP
         self.char_info = {
-            "Emperor": {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker", "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)", "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
-            "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4", "role": "Berserker", "passive": "Bloodlust (+10% ATK tiap turn)", "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
-            "Assassin": {"stats": "HP: 90 | ATK: 25 | DEF: 5", "role": "Burst Assassin", "passive": "Shadow Stance (100% Crit jika tak tersentuh)", "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
-            "Mage": {"stats": "HP: 80 | ATK: 20 | DEF: 4", "role": "Magic Nuke", "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)", "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
-            "Knight": {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank", "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)", "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
-            "Valkyrie": {"stats": "HP: 90 | ATK: 15 | DEF: 4", "role": "Glass Support", "passive": "Holy Aura (Regen 10 Mana tiap giliran)", "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"}
+            "Emperor":   {"stats": "HP: 120 | ATK: 15 | DEF: 10", "role": "Counter-Attacker",  "passive": "Heavenly Defense (Pantulkan DMG jika HP < 50%)",       "ulti": "Absolute Decree (AoE + Pecah Zirah musuh)"},
+            "Gladiator": {"stats": "HP: 115 | ATK: 14 | DEF: 4",  "role": "Berserker",          "passive": "Bloodlust (+10% ATK tiap turn)",                       "ulti": "Arena Execution (Burst DMG + Lifesteal 15% jika kill)"},
+            "Assassin":  {"stats": "HP: 90  | ATK: 25 | DEF: 5",  "role": "Burst Assassin",     "passive": "Shadow Stance (100% Crit jika tak tersentuh)",         "ulti": "Fatal Strike (Mengabaikan 100% DEF musuh)"},
+            "Mage":      {"stats": "HP: 80  | ATK: 20 | DEF: 4",  "role": "Magic Nuke",         "passive": "Mana Shield (-25% DMG diterima jika Mana > 50%)",      "ulti": "Meteor Swarm (AoE masif + efek Burn)"},
+            "Knight":    {"stats": "HP: 160 | ATK: 10 | DEF: 12", "role": "Pure Tank",          "passive": "Aegis Aura (+5% DEF tiap diserang, Max 5x)",           "ulti": "Holy Judgement (DMG dari 1.5x DEF)"},
+            "Valkyrie":  {"stats": "HP: 90  | ATK: 15 | DEF: 4",  "role": "Glass Support",      "passive": "Holy Aura (Regen 10 Mana tiap giliran)",               "ulti": "Hymn of Valhalla (Heal area 25% HP tanpa Kebal)"},
         }
 
-        self.player_party = []
-        self.enemy_party = []
-
+        self.player_party     = []
+        self.enemy_party      = []
         self.last_player_char = None
-        self.last_enemy_char = None
+        self.last_enemy_char  = None
 
-        self.build_ui()
+        self.bg_sprite_list = arcade.SpriteList()
+        self.bg_sprite      = None
+        self.sfx_click      = None
+        # Assets dimuat di on_show_view agar window sudah siap
 
-        # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
-        # ==========================================
-        import os
+    # ------------------------------------------------------------------
+    # ASSET LOADING — dipanggil setelah window tersedia
+    # ------------------------------------------------------------------
+    def _load_assets(self):
+        bg_path = "assets/bg/select_standart_bg.jpg"
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x = self.window.width  / 2
+            self.bg_sprite.center_y = self.window.height / 2
+            self.bg_sprite.width    = self.window.width
+            self.bg_sprite.height   = self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+
         click_path = "assets/sfx/click_menu_standart.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
-        else:
-            self.sfx_click = None
 
-    def get_synergy(self, party):
+    # ------------------------------------------------------------------
+    # SINERGI
+    # ------------------------------------------------------------------
+    def _get_synergy(self, party):
         if self.party_size != 3:
             return "Mode ini tidak mendukung sinergi", arcade.color.GRAY
         if len(party) < 3:
             return "Butuh 3 Karakter", arcade.color.DARK_GRAY
-            
-        elements = [self.element_map[char] for char in party]
-        counts = {e: elements.count(e) for e in set(elements)}
-        
-        if counts.get("🔴", 0) == 3: return "🔥 INFERNO (+20% ATK)", arcade.color.RED
-        if counts.get("🔵", 0) == 3: return "🌊 OCEANIC (Regen 5% HP)", arcade.color.LIGHT_BLUE
-        if counts.get("🌿", 0) == 3: return "🍃 NATURE (+20% DEF)", arcade.color.LIGHT_GREEN
-        if len(counts) == 3: return "✨ TRINITY (Kebal Debuff)", arcade.color.GOLD
-        
+
+        elements = [self.element_map[c] for c in party]
+        counts   = {e: elements.count(e) for e in set(elements)}
+
+        if counts.get("🔴", 0) == 3: return "🔥 INFERNO (+20% ATK)",       arcade.color.RED
+        if counts.get("🔵", 0) == 3: return "🌊 OCEANIC (Regen 5% HP)",    arcade.color.LIGHT_BLUE
+        if counts.get("🌿", 0) == 3: return "🍃 NATURE (+20% DEF)",        arcade.color.LIGHT_GREEN
+        if len(counts)         == 3: return "✨ TRINITY (Kebal Debuff)",    arcade.color.GOLD
         return "❌ Tidak Ada Sinergi", arcade.color.LIGHT_GRAY
 
+    # ------------------------------------------------------------------
+    # HELPER SFX
+    # ------------------------------------------------------------------
+    def _play_click(self):
+        if self.sfx_click:
+            try:
+                from gui.views import BGMManager
+                BGMManager.play_sfx(self.sfx_click)
+            except Exception:
+                pass
+
+    # ------------------------------------------------------------------
+    # BUILD UI  —  dipanggil setiap kali state berubah
+    # ------------------------------------------------------------------
     def build_ui(self):
         self.manager.clear()
+        self.selectable_items.clear()
 
-        # ==========================================
-        # 1. JURUS DIMMER GLOBAL
-        # ==========================================
-        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 25, 200))
-        dimmer_anchor = arcade.gui.UIAnchorLayout()
-        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
-        self.manager.add(dimmer_anchor)
-
-        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=30)
-
-        # ========================================
-        # GAYA TOMBOL RPG MODERN
-        # ========================================
-        rpg_btn_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
-            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        # ---- Style dasar ----
+        rpg_style = {
+            "normal": {"font_color": arcade.color.WHITE,       "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN,       "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE,       "bg_color": arcade.color.ROYAL_BLUE,      "border_color": arcade.color.GOLD,        "border_width": 2},
+            "press":  {"font_color": arcade.color.GOLD,        "bg_color": arcade.color.MIDNIGHT_BLUE,   "border_color": arcade.color.GOLD,        "border_width": 3},
         }
-        
         cancel_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON,   "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED,        "border_color": arcade.color.WHITE,   "border_width": 2},
+            "press":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED,   "border_color": arcade.color.WHITE,   "border_width": 2},
+        }
+        ready_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN,      "border_color": arcade.color.LIME_GREEN,  "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN,    "border_color": arcade.color.GOLD,        "border_width": 2},
+            "press":  {"font_color": arcade.color.GOLD,  "bg_color": arcade.color.DARK_OLIVE_GREEN,"border_color": arcade.color.GOLD,        "border_width": 3},
         }
 
-        # ========================================
-        # ALAT BANTU: PEMANGGIL GAMBAR (RGBA FIX)
-        # ========================================
+        # ---- Helper: load portrait karakter (texture cache fix tanpa arcade.texture_cache) ----
         def get_portrait_widget(char_name):
-            import os
             from PIL import Image as PILImage
+
             if not char_name:
-                return arcade.gui.UISpace(width=200, height=250, color=(0,0,0,0))
-                
-            clean_name = char_name.split('(')[0].split('+')[0].strip()
-            safe_name = clean_name.lower().replace(" ", "_")
-            
-            for ext in ['.png', '.jpg', '.jpeg']:
+                return arcade.gui.UISpace(width=200, height=250, color=(0, 0, 0, 0))
+
+            safe_name = char_name.lower().replace(" ", "_")
+
+            for ext in [".png", ".jpg", ".jpeg"]:
                 path = f"assets/{safe_name}_menu{ext}"
                 if not os.path.exists(path):
-                    path = f"assets/{safe_name}{ext}" # Fallback
-                    
-                if os.path.exists(path):
+                    path = f"assets/{safe_name}{ext}"
+                if not os.path.exists(path):
+                    continue
+
+                try:
+                    pil_img  = PILImage.open(path).convert("RGBA")
+                    tex_name = f"portrait_{safe_name}"
+
+                    # Cache manual di instance — tidak pakai arcade.texture_cache
+                    # yang tidak tersedia di semua versi arcade
+                    if not hasattr(self, "_tex_cache"):
+                        self._tex_cache = {}
+                    if tex_name not in self._tex_cache:
+                        self._tex_cache[tex_name] = arcade.Texture(name=tex_name, image=pil_img)
+                    tex = self._tex_cache[tex_name]
+
+                    scaled_h = 250
+                    scaled_w = int(tex.width * (scaled_h / tex.height))
+
                     try:
-                        pil_img = PILImage.open(path).convert("RGBA")
-                        tex = arcade.Texture(name=f"sel_{safe_name}", image=pil_img)
-                        # Tinggi dikunci di 250px agar pas di layout tanpa merusak proporsi
-                        scaled_height = 250 
-                        scaled_width = int(tex.width * (scaled_height / tex.height))
-                        
-                        try:
-                            widget = arcade.gui.UIImage(texture=tex, width=scaled_width, height=scaled_height)
-                        except AttributeError:
-                            sprite = arcade.Sprite()
-                            sprite.texture = tex
-                            sprite.scale = scaled_height / tex.height
-                            widget = arcade.gui.UISpriteWidget(sprite=sprite, width=scaled_width, height=scaled_height)
-                            
-                        return widget.with_background(color=(0, 0, 0, 0))
-                    except Exception as e:
-                        print(f"⚠️ Gagal load image {path}: {e}")
-                    break
-            
+                        widget = arcade.gui.UIImage(texture=tex, width=scaled_w, height=scaled_h)
+                    except AttributeError:
+                        sprite         = arcade.Sprite()
+                        sprite.texture = tex
+                        sprite.scale   = scaled_h / tex.height
+                        widget = arcade.gui.UISpriteWidget(sprite=sprite, width=scaled_w, height=scaled_h)
+
+                    return widget.with_background(color=(0, 0, 0, 0))
+
+                except Exception as e:
+                    print(f"[WARN portrait] Gagal load {path}: {e}")
+                break
+
             return arcade.gui.UISpace(width=200, height=250, color=(30, 35, 50))
 
-
-        # ========================================
-        # FUNGSI PEMBUAT PANEL KIRI/KANAN
-        # ========================================
-        def create_side_panel(is_player):
+        # ---- Helper: buat panel sisi kiri / kanan ----
+        def create_side_panel(is_player: bool):
             panel_width = 340
-            panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
-            
-            # 1. Header & Grid Pilihan
-            party = self.player_party if is_player else self.enemy_party
-            title_text = f"TIM ANDA ({len(party)}/{self.party_size})" if is_player else f"TIM LAWAN ({len(party)}/{self.party_size})"
+            panel       = arcade.gui.UIBoxLayout(vertical=True, space_between=8)
+            party       = self.player_party if is_player else self.enemy_party
             title_color = arcade.color.CYAN if is_player else arcade.color.CRIMSON
-            
-            panel.add(arcade.gui.UILabel(text=title_text, font_size=18, bold=True, text_color=title_color))
-            
+
+            panel.add(arcade.gui.UILabel(
+                text=f"{'TIM ANDA' if is_player else 'TIM LAWAN'} ({len(party)}/{self.party_size})",
+                font_size=18, bold=True, text_color=title_color
+            ))
+
+            # Grid tombol karakter 2 kolom
             grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
             col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
             col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
 
-            for i, char in enumerate(self.available_characters):
-                btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {self.element_map[char]}", width=110, height=45, style=rpg_btn_style)
-                btn.on_click = self.make_select_action(char, is_player=is_player)
-                if i % 2 == 0: col1.add(btn)
-                else: col2.add(btn)
-                
+            for idx, char in enumerate(self.available_characters):
+                btn = arcade.gui.UIFlatButton(
+                    text=f"{char[:3].upper()} {self.element_map[char]}",
+                    width=110, height=45, style=rpg_style
+                )
+
+                def make_add_handler(c=char, p=is_player):
+                    def handler(event=None):
+                        self._play_click()
+                        if p and len(self.player_party) < self.party_size:
+                            self.player_party.append(c)
+                            self.last_player_char = c
+                        elif not p and len(self.enemy_party) < self.party_size:
+                            self.enemy_party.append(c)
+                            self.last_enemy_char = c
+                        self.build_ui()
+                    return handler
+
+                btn.on_click = make_add_handler()
+                self.selectable_items.append(btn)
+                (col1 if idx % 2 == 0 else col2).add(btn)
+
             grid.add(col1)
             grid.add(col2)
             panel.add(grid)
-            panel.add(arcade.gui.UILabel(text="", height=5))
+            panel.add(arcade.gui.UISpace(height=5))
 
-            # 2. Gambar Karakter & Info Box
-            last_char = self.last_player_char if is_player else self.last_enemy_char
-            
-            # Wadah untuk Gambar Karakter
-            img_anchor = arcade.gui.UIAnchorLayout(width=panel_width, height=260, size_hint=(None, None))
-            img_anchor.add(child=get_portrait_widget(last_char), anchor_x="center", anchor_y="bottom")
+            # Gambar portrait karakter terakhir dipilih
+            last_char  = self.last_player_char if is_player else self.last_enemy_char
+            img_anchor = arcade.gui.UIAnchorLayout(
+                width=panel_width, height=260, size_hint=(None, None)
+            )
+            img_anchor.add(
+                child=get_portrait_widget(last_char),
+                anchor_x="center", anchor_y="bottom"
+            )
             panel.add(img_anchor)
-            
-            # Wadah Kaca Gelap untuk Teks Info (Agar selalu terbaca!)
-            info_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=140, size_hint=(None, None))
-            info_bg = arcade.gui.UISpace(width=panel_width, height=140, color=(15, 20, 30, 220))
-            info_wrapper.add(child=info_bg)
-            
-            info_box = arcade.gui.UIBoxLayout(vertical=True)
+
+            # Info box karakter terakhir dipilih
+            info_anchor = arcade.gui.UIAnchorLayout(width=panel_width, height=140, size_hint=(None, None))
+            info_anchor.add(child=arcade.gui.UISpace(width=panel_width, height=140, color=(15, 20, 30, 220)))
+            info_box = arcade.gui.UIBoxLayout(vertical=True, space_between=3)
+
             if last_char:
-                char_display = f"{self.element_map[last_char]} {last_char.upper()}"
-                info_box.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
-                
-                info = self.char_info[last_char]
-                info_text = f"🛡️ {info['role']}  |  📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
-                info_box.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=panel_width - 20))
+                d = self.char_info[last_char]
+                info_box.add(arcade.gui.UILabel(
+                    text=f"{self.element_map[last_char]} {last_char.upper()}",
+                    font_size=16, bold=True, text_color=arcade.color.WHITE
+                ))
+                info_box.add(arcade.gui.UILabel(
+                    text=f"🛡️ {d['role']}  |  📊 {d['stats']}",
+                    font_size=11, text_color=arcade.color.LIGHT_GRAY
+                ))
+                info_box.add(arcade.gui.UILabel(
+                    text=f"🌟 Pasif: {d['passive']}",
+                    font_size=10, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=panel_width - 20
+                ))
+                info_box.add(arcade.gui.UILabel(
+                    text=f"🔥 Ulti: {d['ulti']}",
+                    font_size=10, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=panel_width - 20
+                ))
             else:
-                info_box.add(arcade.gui.UILabel(text="Belum ada karakter dipilih", font_size=14, text_color=arcade.color.GRAY))
-                
-            info_wrapper.add(child=info_box, anchor_x="center", anchor_y="center")
-            panel.add(info_wrapper)
-            
-            # 3. Sinergi & Tombol Batal
-            syn_name, syn_color = self.get_synergy(party)
-            syn_box = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-            
-            syn_text_box = arcade.gui.UIBoxLayout(vertical=True)
-            syn_text_box.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=11, text_color=arcade.color.WHITE))
-            syn_text_box.add(arcade.gui.UILabel(text=syn_name, font_size=12, bold=True, text_color=syn_color))
-            
-            syn_box.add(syn_text_box)
-            
+                info_box.add(arcade.gui.UILabel(
+                    text="Belum ada karakter dipilih",
+                    font_size=14, text_color=arcade.color.GRAY
+                ))
+
+            info_anchor.add(child=info_box, anchor_x="center", anchor_y="center")
+            panel.add(info_anchor)
+
+            # Sinergi + tombol Batal
+            syn_name, syn_color = self._get_synergy(party)
+            syn_row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+            syn_col = arcade.gui.UIBoxLayout(vertical=True)
+            syn_col.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=11, text_color=arcade.color.WHITE))
+            syn_col.add(arcade.gui.UILabel(text=syn_name, font_size=12, bold=True, text_color=syn_color))
+            syn_row.add(syn_col)
+
             if last_char:
                 undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=100, height=35, style=cancel_style)
-                undo_btn.on_click = self.on_undo_player if is_player else self.on_undo_enemy
-                syn_box.add(undo_btn)
-                
-            panel.add(syn_box)
+
+                def make_undo_handler(p=is_player):
+                    def handler(event=None):
+                        self._play_click()
+                        if p and self.player_party:
+                            self.player_party.pop()
+                            self.last_player_char = self.player_party[-1] if self.player_party else None
+                        elif not p and self.enemy_party:
+                            self.enemy_party.pop()
+                            self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
+                        self.build_ui()
+                    return handler
+
+                undo_btn.on_click = make_undo_handler()
+                self.selectable_items.append(undo_btn)
+                syn_row.add(undo_btn)
+
+            panel.add(syn_row)
             return panel
 
+        # ---- Layout utama horizontal ----
+        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        main_layout.add(create_side_panel(True))
 
-        # ========================================
-        # PEMBANGUNAN 3 PILAR LAYOUT
-        # ========================================
-        
-        # PILAR KIRI
-        main_layout.add(create_side_panel(is_player=True))
+        # ---- Panel tengah ----
+        center = arcade.gui.UIBoxLayout(vertical=True, space_between=12)
+        center.add(arcade.gui.UILabel(text="VS", font_size=42, bold=True, text_color=arcade.color.CRIMSON))
 
-        # PILAR TENGAH (KONTROL)
-        center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
-        
-        center_panel.add(arcade.gui.UILabel(text="VS", font_size=42, bold=True, text_color=arcade.color.CRIMSON))
+        rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM SEMUA", width=200, height=50, style=rpg_style)
+        def rand_action(event=None):
+            self._play_click()
+            while len(self.player_party) < self.party_size:
+                self.player_party.append(random.choice(self.available_characters))
+            while len(self.enemy_party) < self.party_size:
+                self.enemy_party.append(random.choice(self.available_characters))
+            self.last_player_char = self.player_party[-1]
+            self.last_enemy_char  = self.enemy_party[-1]
+            self.build_ui()
+        rand_btn.on_click = rand_action
+        self.selectable_items.append(rand_btn)
+        center.add(rand_btn)
 
-        rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM SEMUA", width=200, height=50, style=rpg_btn_style)
-        rand_btn.on_click = self.on_random
-        center_panel.add(rand_btn)
+        center.add(arcade.gui.UILabel(
+            text="[Panah] Pindah  |  [ENTER] Pilih",
+            font_size=10, bold=True, text_color=arcade.color.YELLOW
+        ))
 
-        # Papan Rantai Elemen dengan latar belakang kaca gelap mini
+        # Panel rantai elemen (seperti kode asli)
         element_wrapper = arcade.gui.UIAnchorLayout(width=200, height=110, size_hint=(None, None))
-        element_bg = arcade.gui.UISpace(width=200, height=110, color=(15, 20, 30, 180))
-        element_wrapper.add(child=element_bg)
-        
+        element_wrapper.add(child=arcade.gui.UISpace(width=200, height=110, color=(15, 20, 30, 180)))
         element_info = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
         element_info.add(arcade.gui.UILabel(text="⚔️ Rantai Elemen:", font_size=14, text_color=arcade.color.GOLD, bold=True))
-        element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun", font_size=13, bold=True, text_color=arcade.color.WHITE))
-        element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air", font_size=13, bold=True, text_color=arcade.color.LIGHT_GREEN))
-        element_info.add(arcade.gui.UILabel(text="🔵 Air > 🔴 Api", font_size=13, bold=True, text_color=arcade.color.LIGHT_BLUE))
-        
+        element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun",  font_size=13, bold=True, text_color=arcade.color.WHITE))
+        element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air",  font_size=13, bold=True, text_color=arcade.color.LIGHT_GREEN))
+        element_info.add(arcade.gui.UILabel(text="🔵 Air  > 🔴 Api",  font_size=13, bold=True, text_color=arcade.color.LIGHT_BLUE))
         element_wrapper.add(child=element_info, anchor_x="center", anchor_y="center")
-        center_panel.add(element_wrapper)
+        center.add(element_wrapper)
 
-        center_panel.add(arcade.gui.UILabel(text="", height=60)) # Spacer
+        center.add(arcade.gui.UISpace(height=40))
 
-        ready_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.GOLD, "border_width": 2},
-            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 3}
-        }
-
-        if len(self.player_party) == self.party_size and len(self.enemy_party) == self.party_size:
-            ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=200, height=60, style=ready_style)
-            ready_btn.on_click = self.on_ready
-            center_panel.add(ready_btn)
+        # Tombol Selesai / placeholder
+        if (len(self.player_party) == self.party_size and
+                len(self.enemy_party) == self.party_size):
+            ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=180, height=60, style=ready_style)
+            def ready_action(event=None):
+                self._play_click()
+                try:
+                    from gui.views import EquipmentSelectionView, BGMManager
+                    self.manager.disable()
+                    self.window.show_view(
+                        EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty)
+                    )
+                except Exception as e:
+                    print(f"[ERROR ready_action] {e}")
+            ready_btn.on_click = ready_action
+            self.selectable_items.append(ready_btn)
+            center.add(ready_btn)
         else:
-            wait_btn = arcade.gui.UIFlatButton(text="Pilih Karakter...", width=200, height=60, style=rpg_btn_style)
-            center_panel.add(wait_btn)
+            center.add(arcade.gui.UIFlatButton(
+                text="Pilih Karakter...", width=180, height=60, style=rpg_style
+            ))
 
-        back_btn = arcade.gui.UIFlatButton(text="❌ Kembali", width=200, height=45, style=cancel_style)
-        back_btn.on_click = self.on_back_click
-        center_panel.add(back_btn)
+        # Tombol Kembali
+        back_btn = arcade.gui.UIFlatButton(text="❌ Kembali", width=180, height=45, style=cancel_style)
+        def back_action(event=None):
+            self._play_click()
+            try:
+                from gui.views import DifficultySelectionView
+                self.manager.disable()
+                self.window.show_view(DifficultySelectionView(self.party_size))
+            except Exception as e:
+                print(f"[ERROR back_action] {e}")
+        back_btn.on_click = back_action
+        self.selectable_items.append(back_btn)
+        center.add(back_btn)
 
-        main_layout.add(center_panel)
+        main_layout.add(center)
+        main_layout.add(create_side_panel(False))
 
-        # PILAR KANAN
-        main_layout.add(create_side_panel(is_player=False))
+        # ---- FIX UTAMA: Gunakan size_hint=(1,1) agar UIAnchorLayout mengisi seluruh window ----
+        root = arcade.gui.UIAnchorLayout(size_hint=(1, 1))
+        root.add(child=main_layout, anchor_x="center", anchor_y="center")
+        self.manager.add(root)
 
-        # Tempelkan triptych utama ke layar
-        final_anchor = arcade.gui.UIAnchorLayout()
-        final_anchor.add(child=main_layout, anchor_x="center", anchor_y="center")
-        self.manager.add(final_anchor)
+        # Jaga selected_index tetap valid
+        total = len(self.selectable_items)
+        if total > 0:
+            self.selected_index = min(self.selected_index, total - 1)
 
-    def make_select_action(self, char_name, is_player):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        def action(event):
-            if is_player and len(self.player_party) < self.party_size:
-                self.player_party.append(char_name)
-                self.last_player_char = char_name
-            elif not is_player and len(self.enemy_party) < self.party_size:
-                self.enemy_party.append(char_name)
-                self.last_enemy_char = char_name
-            self.build_ui() 
-        return action
+    # ------------------------------------------------------------------
+    # NAVIGASI KEYBOARD
+    # ------------------------------------------------------------------
+    def on_key_press(self, key, modifiers):
+        if not self.selectable_items:
+            return
+        total = len(self.selectable_items)
 
-    def on_undo_player(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        if self.player_party:
-            self.player_party.pop() 
-            self.last_player_char = self.player_party[-1] if self.player_party else None
-            self.build_ui()
+        if key in (arcade.key.RIGHT, arcade.key.DOWN):
+            self.selected_index = (self.selected_index + 1) % total
+        elif key in (arcade.key.LEFT, arcade.key.UP):
+            self.selected_index = (self.selected_index - 1) % total
+        elif key in (arcade.key.ENTER, arcade.key.SPACE):
+            self.selectable_items[self.selected_index].on_click(None)
 
-    def on_undo_enemy(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        if self.enemy_party:
-            self.enemy_party.pop() 
-            self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
-            self.build_ui()
-
-    def on_random(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        import random
-        while len(self.player_party) < self.party_size:
-            self.player_party.append(random.choice(self.available_characters))
-        while len(self.enemy_party) < self.party_size:
-            self.enemy_party.append(random.choice(self.available_characters))
-
-        self.last_player_char = self.player_party[-1]
-        self.last_enemy_char = self.enemy_party[-1]
-        self.build_ui()
-
-    def on_ready(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        self.manager.disable()
-        from gui.views import EquipmentSelectionView
-        self.window.show_view(EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty))
-
-    def on_back_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        self.manager.disable()
-        from gui.views import DifficultySelectionView
-        self.window.show_view(DifficultySelectionView(self.party_size))
-
+    # ------------------------------------------------------------------
+    # SIKLUS HIDUP VIEW
+    # ------------------------------------------------------------------
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
-        BGMManager.play("SELECT")
+        # FIX: load asset dulu, lalu enable manager, BARU build UI
+        self._load_assets()
+        self.manager.enable()   # <-- HARUS sebelum build_ui()
+        self.build_ui()         # <-- build setelah manager aktif & window siap
 
+        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
+        try:
+            from gui.views import BGMManager
+            BGMManager.play("SELECT")
+        except Exception:
+            pass
+
+    def on_hide_view(self):
+        self.manager.disable()
+
+    # ------------------------------------------------------------------
+    # RENDER
+    # ------------------------------------------------------------------
     def on_draw(self):
         self.clear()
+
+        # Background
         if self.bg_sprite:
             self.bg_sprite_list.draw()
+
+        # Overlay gelap
+        arcade.draw_lrbt_rectangle_filled(
+            0, self.window.width, 0, self.window.height, (10, 15, 25, 200)
+        )
+
+        # UI
         self.manager.draw()
 
-    def on_resize(self, width: int, height: int):
-        super().on_resize(width, height)
-        if hasattr(self, 'bg_sprite') and self.bg_sprite:
-            self.bg_sprite.center_x = width / 2
-            self.bg_sprite.center_y = height / 2
-            self.bg_sprite.width = width
-            self.bg_sprite.height = height
+        # --- GLOWING BOX NAVIGATOR ---
+        if self.selectable_items:
+            widget = self.selectable_items[self.selected_index]
+            cx, cy = widget.rect.center_x, widget.rect.center_y
 
-# ==========================================
-# 4.5 LAYAR PERSIAPAN EQUIPMENT (PERBAIKAN BUG STOK & UI MODERN)
-# ==========================================
+            if cx != 0 and cy != 0:
+                w = widget.rect.width  + 10
+                h = widget.rect.height + 10
+
+                left   = cx - w / 2
+                right  = cx + w / 2
+                top    = cy + h / 2
+                bottom = cy - h / 2
+
+                alpha = int(127.5 + 127.5 * math.sin(time.time() * 8))
+                alpha = max(0, min(255, alpha))
+
+                arcade.draw_lrbt_rectangle_filled(
+                    left, right, bottom, top,
+                    (*arcade.color.CYAN[:3], 40)
+                )
+                arcade.draw_lrbt_rectangle_outline(
+                    left, right, bottom, top,
+                    (*arcade.color.CYAN[:3], alpha),
+                    border_width=3
+                )
+
+    # ------------------------------------------------------------------
+    # RESIZE
+    # ------------------------------------------------------------------
+    def on_resize(self, width, height):
+        super().on_resize(width, height)
+        if self.bg_sprite:
+            self.bg_sprite.center_x = width  / 2
+            self.bg_sprite.center_y = height / 2
+            self.bg_sprite.width    = width
+            self.bg_sprite.height   = height
+
+# =====================================================================
+# 4.5 LAYAR PERSIAPAN EQUIPMENT (FIXED VERSION)
+# BUG FIXES (sama seperti CharacterSelectionView):
+# 1. manager.enable() + build_main_ui() DIPINDAH ke on_show_view()
+# 2. _load_assets() dipindah ke on_show_view() agar window sudah siap
+# 3. _get_equip_thumbnail() pakai cache manual self._tex_cache
+#    (arcade.texture_cache tidak ada di semua versi)
+# 4. UIAnchorLayout root pakai size_hint=(1,1)
+# =====================================================================
+import arcade
+import arcade.gui
+import math
+import time
+import os
+from engine.save_manager import SaveManager
+from engine.factory import CharacterFactory
+from engine.gacha_system import GachaSystem
+from models.equipment import Equipment
+from models.synergy import SynergyBuff
+
+
 class EquipmentSelectionView(arcade.View):
     def __init__(self, player_types: list, enemy_types: list, difficulty: str):
         super().__init__()
+
+        # FIX: Jangan enable() di sini — window belum siap
         self.manager = arcade.gui.UIManager()
-        self.manager.enable()
+
+        self.player_types  = player_types
+        self.enemy_types   = enemy_types
+        self.difficulty    = difficulty
+
+        # Navigasi keyboard
+        self.selected_index  = 0
+        self.selectable_items = []
+        self.is_picker_open  = False
+
+        # Asset & inventory disiapkan di on_show_view
         self.bg_sprite_list = arcade.SpriteList()
-        import os
-        bg_path = "assets/bg/select_standart_bg.jpg" # Tinggal ganti nama file sesuai selera
+        self.bg_sprite      = None
+        self.sfx_click      = None
+        self._tex_cache     = {}   # cache texture portrait agar tidak crash
+
+        # Inventory & equipped disiapkan di on_show_view juga
+        self.inventory_counts = {}
+        self.equipped_items   = []
+
+    # ------------------------------------------------------------------
+    # ASSET LOADING
+    # ------------------------------------------------------------------
+    def _load_assets(self):
+        bg_path = "assets/bg/select_standart_bg.jpg"
         if os.path.exists(bg_path):
             self.bg_sprite = arcade.Sprite(bg_path)
-            self.bg_sprite.center_x = self.window.width / 2
+            self.bg_sprite.center_x = self.window.width  / 2
             self.bg_sprite.center_y = self.window.height / 2
-            self.bg_sprite.width = self.window.width
-            self.bg_sprite.height = self.window.height
+            self.bg_sprite.width    = self.window.width
+            self.bg_sprite.height   = self.window.height
             self.bg_sprite_list.append(self.bg_sprite)
-        else:
-            self.bg_sprite = None
 
-        self.player_types = player_types
-        self.enemy_types = enemy_types
-        self.difficulty = difficulty
-
-        # 1. Hitung jumlah sebenarnya dari setiap item di Inventory
-        raw_inventory = SaveManager.get_inventory()
-        self.inventory_counts = {"Tangan Kosong": 999} # Tangan kosong tak terbatas
-        for item in raw_inventory:
-            self.inventory_counts[item] = self.inventory_counts.get(item, 0) + 1
-        
-        # 2. Catat item apa yang sedang dipakai oleh masing-masing karakter
-        self.equipped_items = ["Tangan Kosong"] * len(self.player_types)
-
-        # Bangun UI Utama
-        self.build_main_ui()
-
-        # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
-        # ==========================================
-        import os
         click_path = "assets/sfx/click_choose_item.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
-        else:
-            self.sfx_click = None
 
+    def _play_click(self):
+        if self.sfx_click:
+            try:
+                from gui.views import BGMManager
+                BGMManager.play_sfx(self.sfx_click)
+            except Exception:
+                pass
+
+    # ------------------------------------------------------------------
+    # THUMBNAIL HELPER — cache manual, tidak pakai arcade.texture_cache
+    # ------------------------------------------------------------------
+    def _get_equip_thumbnail(self, equip_name):
+        from PIL import Image as PILImage
+        clean_name = equip_name.split('(')[0].split('+')[0].strip()
+        safe_name  = clean_name.lower().replace(" ", "_")
+
+        for ext in ['.png', '.jpg', '.jpeg']:
+            path = f"assets/{safe_name}{ext}"
+            if not os.path.exists(path):
+                continue
+            try:
+                tex_key = f"equip_{safe_name}"
+                if tex_key not in self._tex_cache:
+                    pil_img = PILImage.open(path).convert("RGBA")
+                    self._tex_cache[tex_key] = arcade.Texture(name=tex_key, image=pil_img)
+                tex = self._tex_cache[tex_key]
+
+                sw = int(tex.width * (55 / tex.height))
+                try:
+                    widget = arcade.gui.UIImage(texture=tex, width=sw, height=55)
+                except AttributeError:
+                    sprite         = arcade.Sprite()
+                    sprite.texture = tex
+                    sprite.scale   = 55 / tex.height
+                    widget = arcade.gui.UISpriteWidget(sprite=sprite, width=sw, height=55)
+                return widget.with_background(color=(0, 0, 0, 0))
+            except Exception as e:
+                print(f"[WARN equip thumbnail] {path}: {e}")
+            break
+
+        return arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
+
+    # ------------------------------------------------------------------
+    # UI: MENU UTAMA EQUIPMENT
+    # ------------------------------------------------------------------
     def build_main_ui(self):
         self.manager.clear()
+        self.selectable_items.clear()
+        self.is_picker_open = False
 
-        # ==========================================
-        # 1. JURUS DIMMER: Meredupkan Latar Belakang
-        # ==========================================
-        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 180))
-        dimmer_anchor = arcade.gui.UIAnchorLayout()
-        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
-        self.manager.add(dimmer_anchor)
+        rpg_style = {
+            "normal": {"font_color": arcade.color.WHITE,  "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN,      "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE,  "bg_color": arcade.color.ROYAL_BLUE,      "border_color": arcade.color.GOLD,       "border_width": 2},
+            "press":  {"font_color": arcade.color.GOLD,   "bg_color": arcade.color.MIDNIGHT_BLUE,   "border_color": arcade.color.GOLD,       "border_width": 3},
+        }
+        ready_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN,       "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN,     "border_color": arcade.color.GOLD,       "border_width": 2},
+            "press":  {"font_color": arcade.color.GOLD,  "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD,       "border_width": 3},
+        }
 
-        self.v_box = arcade.gui.UIBoxLayout(space_between=20)
+        v_box = arcade.gui.UIBoxLayout(space_between=20)
+        v_box.add(arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=28, bold=True))
+        v_box.add(arcade.gui.UILabel(text="[Panah] Navigasi  |  [ENTER] Pilih", text_color=arcade.color.YELLOW, font_size=11, bold=True))
+        v_box.add(arcade.gui.UISpace(height=10))
 
-        # JUDUL
-        title = arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=28, bold=True)
-        self.v_box.add(title)
-        
-        self.v_box.add(arcade.gui.UILabel(text="Klik tombol equipment untuk mengganti perlengkapan karakter", text_color=arcade.color.LIGHT_GRAY, font_size=14, bold=True))
-        self.v_box.add(arcade.gui.UILabel(text="", height=10))
-
-        # ==========================================
-        # ALAT BANTU: Pemanggil Gambar (Trik RGBA)
-        # ==========================================
-        def get_equip_thumbnail(equip_name):
-            import os
-            from PIL import Image as PILImage
-            
-            clean_name = equip_name.split('(')[0].split('+')[0].strip()
-            safe_name = clean_name.lower().replace(" ", "_")
-            
-            widget = None
-            for ext in ['.png', '.jpg', '.jpeg']:
-                path = f"assets/{safe_name}{ext}"
-                if os.path.exists(path):
-                    try:
-                        pil_img = PILImage.open(path).convert("RGBA")
-                        tex = arcade.Texture(name=path, image=pil_img)
-                        scaled_width = int(tex.width * (55 / tex.height))
-                        
-                        try:
-                            widget = arcade.gui.UIImage(texture=tex, width=scaled_width, height=55)
-                        except AttributeError:
-                            sprite = arcade.Sprite()
-                            sprite.texture = tex
-                            sprite.scale = 55 / tex.height
-                            widget = arcade.gui.UISpriteWidget(sprite=sprite, width=scaled_width, height=55)
-                            
-                        widget = widget.with_background(color=(0, 0, 0, 0))
-                        return widget
-                    except Exception as e:
-                        print(f"⚠️ Gagal load thumbnail {path}: {e}")
-                    break
-            
-            if widget is None:
-                widget = arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
-            return widget
-
-        # ==========================================
-        # 2. WADAH KARTU DAFTAR
-        # ==========================================
-        list_bg_width = 650
+        list_bg_width  = 650
         list_bg_height = max(100, len(self.player_types) * 75 + 40)
-        
-        list_wrapper = arcade.gui.UIAnchorLayout(width=list_bg_width, height=list_bg_height, size_hint=(None, None))
-        list_bg = arcade.gui.UISpace(width=list_bg_width, height=list_bg_height, color=(15, 20, 30, 220))
-        list_wrapper.add(child=list_bg)
-        
+        list_wrapper   = arcade.gui.UIAnchorLayout(width=list_bg_width, height=list_bg_height, size_hint=(None, None))
+        list_wrapper.add(child=arcade.gui.UISpace(width=list_bg_width, height=list_bg_height, color=(15, 20, 30, 220)))
         list_content = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
-        
-        # Ambil GachaSystem untuk mengecek Rarity
-        from engine.gacha_system import GachaSystem
 
-        # DAFTAR KARAKTER DENGAN ZONASI PRESISI
         for i, char_type in enumerate(self.player_types):
-            row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+            row          = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
             current_item = self.equipped_items[i]
-            
-            # --- ZONA 1: LABEL NAMA KARAKTER ---
-            # Dikunci di lebar 120px, teks diratakan ke KANAN agar selalu dekat dengan ikon
+
             lbl_zone = arcade.gui.UIAnchorLayout(width=120, height=60, size_hint=(None, None))
-            lbl = arcade.gui.UILabel(text=f"{char_type}", font_size=17, bold=True, text_color=arcade.color.CYAN)
-            lbl_zone.add(child=lbl, anchor_x="right", anchor_y="center")
-            
-            # --- ZONA 2: IKON ---
-            icon_zone = arcade.gui.UIAnchorLayout(width=60, height=60, size_hint=(None, None))
-            icon_zone = icon_zone.with_background(color=(0,0,0,0))
-            thumbnail = get_equip_thumbnail(current_item)
-            icon_zone.add(child=thumbnail, anchor_x="center", anchor_y="center")
-            
-            # --- MENCARI WARNA BERDASARKAN RARITY ---
+            lbl_zone.add(child=arcade.gui.UILabel(text=char_type, font_size=17, bold=True, text_color=arcade.color.CYAN), anchor_x="right", anchor_y="center")
+
+            icon_zone = arcade.gui.UIAnchorLayout(width=60, height=60, size_hint=(None, None)).with_background(color=(0, 0, 0, 0))
+            icon_zone.add(child=self._get_equip_thumbnail(current_item), anchor_x="center", anchor_y="center")
+
+            # Warna teks sesuai rarity
             item_text_color = arcade.color.WHITE
             if current_item != "Tangan Kosong":
                 item_data = GachaSystem.ITEM_POOL.get(current_item)
                 if item_data:
                     rarity = item_data.get("rarity", "Common")
-                    if rarity == "Mythic": item_text_color = arcade.color.RED
+                    if rarity == "Mythic":    item_text_color = arcade.color.RED
                     elif rarity == "Legendary": item_text_color = arcade.color.GOLD
-                    elif rarity == "Rare": item_text_color = arcade.color.LIGHT_BLUE
+                    elif rarity == "Rare":    item_text_color = arcade.color.LIGHT_BLUE
 
-            # --- ZONA 3: TOMBOL EQUIPMENT (WARNA DINAMIS) ---
-            # Setiap tombol sekarang memiliki warnanya sendiri berdasarkan rarity item!
-            rpg_btn_style = {
+            btn_style = {
                 "normal": {"font_color": item_text_color, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
-                "hover": {"font_color": item_text_color, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
-                "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+                "hover":  {"font_color": item_text_color, "bg_color": arcade.color.ROYAL_BLUE,      "border_color": arcade.color.GOLD, "border_width": 2},
+                "press":  {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3},
             }
-            
-            btn_zone = arcade.gui.UIAnchorLayout(width=320, height=60, size_hint=(None, None))
-            btn = arcade.gui.UIFlatButton(text=current_item, width=320, height=55, style=rpg_btn_style)
-            
-            def create_open_action(index):
-                original_action = self.make_open_picker_action(index)
-                def wrapper(event):
-                    if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
-                    original_action(event)
+            btn = arcade.gui.UIFlatButton(text=current_item, width=320, height=55, style=btn_style)
+
+            def make_open_action(index=i):
+                def wrapper(event=None):
+                    self._play_click()
+                    self.open_item_picker(index)
                 return wrapper
-                
-            btn.on_click = create_open_action(i)
+
+            btn.on_click = make_open_action()
+            self.selectable_items.append(btn)
+
+            btn_zone = arcade.gui.UIAnchorLayout(width=320, height=60, size_hint=(None, None))
             btn_zone.add(child=btn, anchor_x="center", anchor_y="center")
-            
-            # Masukkan zona-zona yang sudah presisi ke dalam baris
             row.add(lbl_zone)
             row.add(icon_zone)
             row.add(btn_zone)
             list_content.add(row)
-            
-        # Gabungkan daftar ke dalam alas kartu gelap
+
         list_wrapper.add(child=list_content, anchor_x="center", anchor_y="center")
-        self.v_box.add(list_wrapper)
+        v_box.add(list_wrapper)
+        v_box.add(arcade.gui.UISpace(height=20))
 
-        self.v_box.add(arcade.gui.UILabel(text="", height=20))
-        
-        # ==========================================
-        # 3. TOMBOL START PREMIUM
-        # ==========================================
-        ready_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.GOLD, "border_width": 2},
-            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 3}
-        }
-        
         start_btn = arcade.gui.UIFlatButton(text="🔥 MASUK KE ARENA 🔥", width=400, height=60, style=ready_style)
-        
-        def on_start_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
-            self.on_start_battle(event)
-            
-        start_btn.on_click = on_start_sfx
-        self.v_box.add(start_btn)
+        def on_start(event=None):
+            self._play_click()
+            self._start_battle()
+        start_btn.on_click = on_start
+        self.selectable_items.append(start_btn)
+        v_box.add(start_btn)
 
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor)
+        # FIX: size_hint=(1,1) agar anchor tahu ukuran layar
+        root = arcade.gui.UIAnchorLayout(size_hint=(1, 1))
+        root.add(child=v_box, anchor_x="center", anchor_y="center")
+        self.manager.add(root)
 
-    def make_open_picker_action(self, char_idx):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        def action(event):
-            self.open_item_picker(char_idx)
-        return action
+        self.selected_index = min(self.selected_index, max(0, len(self.selectable_items) - 1))
 
+    # ------------------------------------------------------------------
+    # UI: PICKER INVENTORY
+    # ------------------------------------------------------------------
     def open_item_picker(self, char_idx):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-            
         self.manager.clear()
-        
-        # ==========================================
-        # 1. DIMMER LAYAR UTAMA
-        # ==========================================
-        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
-        dimmer_anchor = arcade.gui.UIAnchorLayout()
-        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
-        self.manager.add(dimmer_anchor)
-        
-        main_window = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
-        
-        title_text = f"✨ PERLENGKAPAN : {self.player_types[char_idx].upper()} ✨"
-        main_window.add(arcade.gui.UILabel(text=title_text, font_size=24, text_color=arcade.color.GOLD, bold=True))
+        self.selectable_items.clear()
+        self.is_picker_open  = True
+        self.selected_index  = 0
 
-        from engine.gacha_system import GachaSystem
-        import os
-        
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON,  "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED,       "border_color": arcade.color.WHITE,   "border_width": 2},
+            "press":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED,  "border_color": arcade.color.WHITE,   "border_width": 2},
+        }
+        btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover":  {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE,      "border_color": arcade.color.GOLD, "border_width": 2},
+            "press":  {"font_color": arcade.color.GOLD,  "bg_color": arcade.color.MIDNIGHT_BLUE,   "border_color": arcade.color.GOLD, "border_width": 3},
+        }
+
+        main_window = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
+        main_window.add(arcade.gui.UILabel(
+            text=f"✨ PERLENGKAPAN : {self.player_types[char_idx].upper()} ✨",
+            font_size=24, text_color=arcade.color.GOLD, bold=True
+        ))
+
         grid_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=40)
         col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
-        
-        valid_items = [(name, count) for name, count in self.inventory_counts.items() if count > 0 or name == "Tangan Kosong"]
-            
-        for i, (item_name, count) in enumerate(valid_items):
-            item_data = GachaSystem.ITEM_POOL.get(item_name) if item_name != "Tangan Kosong" else None
-            
-            # ==========================================
-            # 2. PEMBUATAN KARTU (ANTI HOVER-BUG!)
-            # ==========================================
-            card_width = 440
-            card_height = 85
-            
+
+        valid_items = [(name, count) for name, count in self.inventory_counts.items()
+                       if count > 0 or name == "Tangan Kosong"]
+
+        for idx, (item_name, count) in enumerate(valid_items):
+            item_data   = GachaSystem.ITEM_POOL.get(item_name) if item_name != "Tangan Kosong" else None
+            card_width, card_height = 440, 85
+
             card_wrapper = arcade.gui.UIAnchorLayout(width=card_width, height=card_height, size_hint=(None, None))
-            
-            # --- TRIK BARU: BORDER PALSU DENGAN UISpace ---
-            # Layer 1 (Paling Bawah): Kotak luar warna terang sebagai "Border"
-            border_bg = arcade.gui.UISpace(width=card_width, height=card_height, color=(60, 80, 110))
-            card_wrapper.add(child=border_bg, anchor_x="center", anchor_y="center")
-            
-            # Layer 2 (Tengah): Kotak dalam warna gelap (Ukuran dikurangi 4px)
-            inner_bg = arcade.gui.UISpace(width=card_width-4, height=card_height-4, color=(20, 25, 40))
-            card_wrapper.add(child=inner_bg, anchor_x="center", anchor_y="center")
-            
-            # Layer 3 (Paling Atas): Laci Utama Konten Kartu
+            card_wrapper.add(child=arcade.gui.UISpace(width=card_width,     height=card_height,     color=(60, 80, 110)))
+            card_wrapper.add(child=arcade.gui.UISpace(width=card_width - 4, height=card_height - 4, color=(20, 25, 40)))
+
             card_content = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-            
-           # --- ZONA 1: IKON ---
-            icon_zone = arcade.gui.UIAnchorLayout(width=70, height=card_height, size_hint=(None, None))
-            icon_zone = icon_zone.with_background(color=(0, 0, 0, 0))
 
-            clean_name = item_name.split('(')[0].split('+')[0].strip()
-            safe_name = clean_name.lower().replace(" ", "_")
-
-            from PIL import Image as PILImage
-
-            icon_widget = None
-            for ext in ['.png', '.jpg', '.jpeg']:
-                path = f"assets/{safe_name}{ext}"
-                if os.path.exists(path):
-                    try:
-                        pil_img = PILImage.open(path).convert("RGBA")
-                        tex = arcade.Texture(name=path, image=pil_img)
-                        
-                        scaled_width = int(tex.width * (55 / tex.height))
-                        
-                        try:
-                            icon_widget = arcade.gui.UIImage(
-                                texture=tex,
-                                width=scaled_width,
-                                height=55
-                            )
-                        except AttributeError:
-                            item_sprite = arcade.Sprite()
-                            item_sprite.texture = tex
-                            item_sprite.scale = 55 / tex.height
-                            icon_widget = arcade.gui.UISpriteWidget(
-                                sprite=item_sprite,
-                                width=scaled_width,
-                                height=55
-                            )
-                        
-                        icon_widget = icon_widget.with_background(color=(0, 0, 0, 0))
-                    except Exception as e:
-                        print(f"⚠️ Gagal load icon {path}: {e}")
-                    break
-
-            if icon_widget is None:
-                icon_widget = arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
-
-            icon_zone.add(child=icon_widget, anchor_x="center", anchor_y="center")
+            icon_zone = arcade.gui.UIAnchorLayout(width=70, height=card_height, size_hint=(None, None)).with_background(color=(0, 0, 0, 0))
+            icon_zone.add(child=self._get_equip_thumbnail(item_name), anchor_x="center", anchor_y="center")
             card_content.add(icon_zone)
-            
-            # --- ZONA 2: TEKS ---
+
             text_zone = arcade.gui.UIAnchorLayout(width=230, height=card_height, size_hint=(None, None))
-            info_box = arcade.gui.UIBoxLayout(vertical=True)
-            info_box.add(arcade.gui.UISpace(height=8)) 
-            
+            info_box   = arcade.gui.UIBoxLayout(vertical=True)
+            info_box.add(arcade.gui.UISpace(height=8))
+
             if item_name == "Tangan Kosong":
-                info_box.add(arcade.gui.UILabel(text="Tangan Kosong", font_size=15, text_color=arcade.color.WHITE, bold=True, width=230))
-                info_box.add(arcade.gui.UILabel(text="Lepaskan perlengkapan", font_size=11, text_color=arcade.color.GRAY, width=230, multiline=True))
+                info_box.add(arcade.gui.UILabel(text="Tangan Kosong",        font_size=15, text_color=arcade.color.WHITE, bold=True, width=230))
+                info_box.add(arcade.gui.UILabel(text="Lepaskan perlengkapan", font_size=11, text_color=arcade.color.GRAY,  width=230, multiline=True))
             else:
                 rarity = item_data.get("rarity", "Common")
-                color = arcade.color.WHITE
-                if rarity == "Mythic": color = arcade.color.RED
+                color  = arcade.color.WHITE
+                if rarity == "Mythic":     color = arcade.color.RED
                 elif rarity == "Legendary": color = arcade.color.GOLD
-                elif rarity == "Rare": color = arcade.color.LIGHT_BLUE
-                
-                info_box.add(arcade.gui.UILabel(text=f"{item_name}", font_size=15, text_color=color, bold=True, width=230))
-                desc = item_data.get("desc", "Tanpa efek")
-                info_box.add(arcade.gui.UILabel(text=desc, font_size=11, text_color=arcade.color.LIGHT_GREEN, width=230, multiline=True))
-            
+                elif rarity == "Rare":     color = arcade.color.LIGHT_BLUE
+                info_box.add(arcade.gui.UILabel(text=item_name,                   font_size=15, text_color=color,                  bold=True, width=230))
+                info_box.add(arcade.gui.UILabel(text=item_data.get("desc", "-"),   font_size=11, text_color=arcade.color.LIGHT_GREEN, width=230, multiline=True))
+
             text_zone.add(child=info_box, anchor_x="left", anchor_y="center")
             card_content.add(text_zone)
-            
-            # --- ZONA 3: TOMBOL PAKAI (TETAP INTERAKTIF) ---
-            btn_zone = arcade.gui.UIAnchorLayout(width=100, height=card_height, size_hint=(None, None))
+
             btn_text = "Lepas" if item_name == "Tangan Kosong" else f"Pakai ({count})"
-            
-            rpg_button_style = {
-                "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
-                "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
-                "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
-            }
-            
-            btn = arcade.gui.UIFlatButton(text=btn_text, width=90, height=45, style=rpg_button_style)
-            btn.on_click = self.make_select_item_action(char_idx, item_name)
-            
+            btn      = arcade.gui.UIFlatButton(text=btn_text, width=90, height=45, style=btn_style)
+
+            def make_equip_action(c_idx=char_idx, i_name=item_name):
+                def action(event=None):
+                    self._play_click()
+                    old_item = self.equipped_items[c_idx]
+                    if old_item != "Tangan Kosong":
+                        self.inventory_counts[old_item] += 1
+                    if i_name != "Tangan Kosong":
+                        self.inventory_counts[i_name] -= 1
+                    self.equipped_items[c_idx] = i_name
+                    self.build_main_ui()
+                return action
+
+            btn.on_click = make_equip_action()
+            self.selectable_items.append(btn)
+
+            btn_zone = arcade.gui.UIAnchorLayout(width=100, height=card_height, size_hint=(None, None))
             btn_zone.add(child=btn, anchor_x="center", anchor_y="center")
             card_content.add(btn_zone)
-            
-            # Tempel Konten (Layer 3) ke Wadah Utama
             card_wrapper.add(child=card_content, anchor_x="center", anchor_y="center")
-            
-            if i % 2 == 0:
-                col1.add(card_wrapper)
-            else:
-                col2.add(card_wrapper)
-                
+
+            (col1 if idx % 2 == 0 else col2).add(card_wrapper)
+
         grid_layout.add(col1)
         grid_layout.add(col2)
         main_window.add(grid_layout)
-        
-        main_window.add(arcade.gui.UILabel(text="", height=10))
-        
-        # ==========================================
-        # 3. TOMBOL BATAL BAWAH
-        # ==========================================
-        cancel_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
-            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
-        }
+        main_window.add(arcade.gui.UISpace(height=10))
+
         back_btn = arcade.gui.UIFlatButton(text="❌ BATAL & KEMBALI", width=300, height=50, style=cancel_style)
-        
-        def on_back(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click:
-                BGMManager.play_sfx(self.sfx_click)
+        def on_back(event=None):
+            self._play_click()
             self.build_main_ui()
-            
         back_btn.on_click = on_back
+        self.selectable_items.append(back_btn)
         main_window.add(back_btn)
 
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=main_window, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor)
+        # FIX: size_hint=(1,1)
+        root = arcade.gui.UIAnchorLayout(size_hint=(1, 1))
+        root.add(child=main_window, anchor_x="center", anchor_y="center")
+        self.manager.add(root)
 
-    def make_select_item_action(self, char_idx, item_name):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-        def action(event):
-            # 1. Kembalikan item lama ke inventory (jika bukan Tangan Kosong)
-            old_item = self.equipped_items[char_idx]
-            if old_item != "Tangan Kosong":
-                self.inventory_counts[old_item] += 1
-            
-            # 2. Kurangi stok item baru (jika bukan Tangan Kosong)
-            if item_name != "Tangan Kosong":
-                self.inventory_counts[item_name] -= 1
-                
-            # 3. Pasangkan ke karakter
-            self.equipped_items[char_idx] = item_name
-            
-            # 4. Kembali ke UI Utama
-            self.build_main_ui()
-        return action
-
-    def on_start_battle(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
+    # ------------------------------------------------------------------
+    # LOGIKA START BATTLE
+    # ------------------------------------------------------------------
+    def _start_battle(self):
         self.manager.disable()
-        from models.equipment import Equipment 
-        from models.synergy import SynergyBuff # IMPORT DECORATOR BARU KITA
-        from engine.gacha_system import GachaSystem
-        
-        # Fungsi pembantu untuk menentukan nama sinergi
+
         element_map = {
             "Emperor": "🔴", "Mage": "🔴",
             "Gladiator": "🔵", "Knight": "🔵",
             "Assassin": "🌿", "Valkyrie": "🌿"
         }
-        
+
         def get_synergy_type(party):
             if len(party) < 3: return None
-            elements = [element_map[char] for char in party]
-            counts = {e: elements.count(e) for e in set(elements)}
+            elements = [element_map[c] for c in party]
+            counts   = {e: elements.count(e) for e in set(elements)}
             if counts.get("🔴", 0) == 3: return "INFERNO"
             if counts.get("🔵", 0) == 3: return "OCEANIC"
             if counts.get("🌿", 0) == 3: return "NATURE"
-            if len(counts) == 3: return "TRINITY"
+            if len(counts) == 3:          return "TRINITY"
             return None
 
-        # Hitung sinergi kedua tim
         p_synergy = get_synergy_type(self.player_types)
         e_synergy = get_synergy_type(self.enemy_types)
-        
-        # 1. SETUP TIM PEMAIN 
-        player_party = []
-        player_levels = []
+
+        player_party, player_levels = [], []
         for i, char_type in enumerate(self.player_types):
-            char = CharacterFactory.create_character(char_type, f"{char_type} (P{i+1})")
+            char  = CharacterFactory.create_character(char_type, f"{char_type} (P{i+1})")
             level = SaveManager.get_character_data(char_type)["level"]
             char.apply_scaling(level=level, stat_multiplier=1.0)
             player_levels.append(level)
-            
-            # LAPISAN 1: Bungkus karakter dengan Equipment Gacha
+
             eq_name = self.equipped_items[i]
             if eq_name != "Tangan Kosong":
                 eq_data = GachaSystem.ITEM_POOL[eq_name]
-                char = Equipment(char, item_name=eq_name, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
-            
-            # LAPISAN 2: Bungkus lagi dengan Sinergi (Hanya jika aktif)
-            if p_synergy:
-                char = SynergyBuff(char, synergy_type=p_synergy)
-                
-            # ==========================================
-            # FIX BUG: TEMPELKAN LABEL NAMA SENJATA SECARA PAKSA!
-            # ==========================================
-            char.equipped_name = eq_name 
-                    
+                char    = Equipment(char, item_name=eq_name, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
+
+            if p_synergy: char = SynergyBuff(char, synergy_type=p_synergy)
+            char.equipped_name = eq_name
             player_party.append(char)
-            
-        # 2. SETUP TIM MUSUH
-        avg_level = max(1, sum(player_levels) // len(player_levels))
+
+        from gui.views import DIFFICULTY_SETTINGS
+        avg_level    = max(1, sum(player_levels) // len(player_levels))
         diff_settings = DIFFICULTY_SETTINGS[self.difficulty]
-        enemy_level = min(avg_level, diff_settings["enemy_cap"])
-        all_items = list(GachaSystem.ITEM_POOL.keys())
-        
+        enemy_level  = min(avg_level, diff_settings["enemy_cap"])
+
         enemy_party = []
         for i, char_type in enumerate(self.enemy_types):
-            char = CharacterFactory.create_character(char_type, f"{char_type} (Musuh {i+1})")
+            char     = CharacterFactory.create_character(char_type, f"{char_type} (Musuh {i+1})")
             char.apply_scaling(level=enemy_level, stat_multiplier=diff_settings["stat_mult"])
-            
-            import random
-            # Akan otomatis menyesuaikan dengan Easy / Normal / Hard!
             random_eq = GachaSystem.get_enemy_equipment(self.difficulty, 0)
-            eq_data = GachaSystem.ITEM_POOL[random_eq]
-
-            # LAPISAN 1: Musuh pakai Equipment acak
-            char = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
-            
-            # LAPISAN 2: Sinergi Musuh (Awas kalau musuh dapat Inferno!)
-            if e_synergy:
-                char = SynergyBuff(char, synergy_type=e_synergy)
-                
+            eq_data   = GachaSystem.ITEM_POOL[random_eq]
+            char      = Equipment(char, item_name=random_eq, bonus_atk=eq_data["bonus_atk"], bonus_def=eq_data["bonus_def"])
+            if e_synergy: char = SynergyBuff(char, synergy_type=e_synergy)
             enemy_party.append(char)
-            enemy_party[i] = char
 
-        # 3. LEMPAR KE ARENA
         from gui.views import BattleView
-        
-        # Cek apakah ini mode Endless untuk menentukan lantai awal
         start_floor = 1 if self.difficulty == "Endless" else 0
-        battle_view = BattleView(player_party, enemy_party, self.difficulty, self.player_types, endless_floor=start_floor)
-        self.window.show_view(battle_view)
+        self.window.show_view(BattleView(player_party, enemy_party, self.difficulty, self.player_types, endless_floor=start_floor))
 
+    # ------------------------------------------------------------------
+    # SIKLUS HIDUP VIEW
+    # ------------------------------------------------------------------
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
+        # FIX: urutan wajib — assets → enable → inventory → build
+        self._load_assets()
+        self.manager.enable()
+
+        # Inisialisasi inventory & equipped hanya sekali
+        if not self.inventory_counts:
+            raw_inventory = SaveManager.get_inventory()
+            self.inventory_counts = {"Tangan Kosong": 999}
+            for item in raw_inventory:
+                self.inventory_counts[item] = self.inventory_counts.get(item, 0) + 1
+            self.equipped_items = ["Tangan Kosong"] * len(self.player_types)
+
+        self.build_main_ui()
+        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
+        try:
+            from gui.views import BGMManager
+            BGMManager.play("SELECT")
+        except Exception:
+            pass
+
+    def on_hide_view(self):
+        self.manager.disable()
+
+    # ------------------------------------------------------------------
+    # KEYBOARD & RENDER
+    # ------------------------------------------------------------------
+    def on_key_press(self, key, modifiers):
+        if not self.selectable_items: return
+        total = len(self.selectable_items)
+
+        if key in (arcade.key.RIGHT, arcade.key.DOWN):
+            self.selected_index = (self.selected_index + 1) % total
+        elif key in (arcade.key.LEFT, arcade.key.UP):
+            self.selected_index = (self.selected_index - 1) % total
+
+        if key in (arcade.key.ENTER, arcade.key.SPACE):
+            self.selectable_items[self.selected_index].on_click(None)
 
     def on_draw(self):
         self.clear()
         if self.bg_sprite:
             self.bg_sprite_list.draw()
+
+        arcade.draw_lrbt_rectangle_filled(
+            0, self.window.width, 0, self.window.height, (10, 15, 25, 200)
+        )
+
         self.manager.draw()
 
-    def on_resize(self, width: int, height: int):
+        # --- GLOWING BOX NAVIGATOR ---
+        if self.selectable_items:
+            widget = self.selectable_items[self.selected_index]
+            cx, cy = widget.rect.center_x, widget.rect.center_y
+
+            if cx != 0 and cy != 0:
+                w = widget.rect.width  + 10
+                h = widget.rect.height + 10
+
+                left   = cx - w / 2
+                right  = cx + w / 2
+                top    = cy + h / 2
+                bottom = cy - h / 2
+
+                alpha = int(127.5 + 127.5 * math.sin(time.time() * 8))
+                alpha = max(0, min(255, alpha))
+
+                arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, (*arcade.color.CYAN[:3], 40))
+                arcade.draw_lrbt_rectangle_outline(left, right, bottom, top, (*arcade.color.CYAN[:3], alpha), border_width=3)
+
+    def on_resize(self, width, height):
         super().on_resize(width, height)
-        if hasattr(self, 'bg_sprite') and self.bg_sprite:
-            self.bg_sprite.center_x = width / 2
+        if self.bg_sprite:
+            self.bg_sprite.center_x = width  / 2
             self.bg_sprite.center_y = height / 2
-            self.bg_sprite.width = width
-            self.bg_sprite.height = height
+            self.bg_sprite.width    = width
+            self.bg_sprite.height   = height
 
 
-# ==========================================
-# LAYAR GAME OVER / KEMENANGAN (UPDATE: AAA UI & REFACTOR)
-# ==========================================
+# =====================================================================
+# LAYAR GAME OVER / KEMENANGAN (CLEAN CODE & KEYBOARD NAV)
+# =====================================================================
+import arcade
+import math
+import time
+import os
+
 class GameOverView(arcade.View):
     def __init__(self, winner_name: str, loser_name: str, winner_hp: int, is_player_win: bool, difficulty: str, player_types: list):
         super().__init__()
         
-        # Simpan History
-        from engine.save_manager import SaveManager # Pastikan import ini ada
+        from engine.save_manager import SaveManager 
+        from gui.views import HistoryManager, DIFFICULTY_SETTINGS
         HistoryManager.save_match(winner_name, loser_name, winner_hp)
         
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         
-        # --- SETUP BACKGROUND ---
-        self.bg_sprite_list = arcade.SpriteList()
-        import os
-        bg_path = "assets/bg/game_over_bg.jpg" 
-        if os.path.exists(bg_path):
-            self.bg_sprite = arcade.Sprite(bg_path)
-            self.bg_sprite.center_x = self.window.width / 2
-            self.bg_sprite.center_y = self.window.height / 2
-            self.bg_sprite.width = self.window.width
-            self.bg_sprite.height = self.window.height
-            self.bg_sprite_list.append(self.bg_sprite)
-        else:
-            self.bg_sprite = None
+        # --- Navigasi Keyboard ---
+        self.selected_index = 0
+        self.menu_buttons = []
 
-        # --- SETUP SFX ---
-        click_path = "assets/sfx/click_game_over.mp3"
-        if os.path.exists(click_path):
-            self.sfx_click = arcade.load_sound(click_path)
-        else:
-            self.sfx_click = None
+        self._load_assets()
 
-        # ==========================================
-        # LOGIKA PERHITUNGAN HADIAH (Hanya dihitung 1x saat Init)
-        # ==========================================
+        # Logika Hadiah 1x Hitung
         self.is_player_win = is_player_win
         self.party_status = []
         self.current_gold = SaveManager.get_gold()
@@ -2263,134 +2354,123 @@ class GameOverView(arcade.View):
         if self.is_player_win:
             party_size = len(player_types)
             base_exp = 50 if party_size == 1 else (75 if party_size == 2 else 100)
-            multiplier = DIFFICULTY_SETTINGS[difficulty]["exp_mult"]
-            self.total_exp = int(base_exp * multiplier)
-            
-            # Gold dikali jumlah karakter yang hidup/dibawa
+            self.total_exp = int(base_exp * DIFFICULTY_SETTINGS[difficulty]["exp_mult"])
             self.gold_reward = DIFFICULTY_SETTINGS[difficulty]["gold_reward"] * party_size
             self.current_gold = SaveManager.add_gold(self.gold_reward)
             
-            # Tambah EXP ke setiap karakter
             for char_type in player_types:
                 new_lvl, leveled_up = SaveManager.add_exp(char_type, self.total_exp)
-                if leveled_up:
-                    self.party_status.append(f"⭐ {char_type} NAIK KE LEVEL {new_lvl}! ⭐")
-                else:
-                    self.party_status.append(f"✔️ {char_type} (Lv.{new_lvl})")
+                if leveled_up: self.party_status.append(f"⭐ {char_type} NAIK KE LEVEL {new_lvl}! ⭐")
+                else: self.party_status.append(f"✔️ {char_type} (Lv.{new_lvl})")
 
-        # Panggil pembuatan Antarmuka secara terpisah
         self.build_ui()
 
-    # ==========================================
-    # RENDER UI: PANEL KACA GELAP
-    # ==========================================
+    def _load_assets(self):
+        self.bg_sprite_list = arcade.SpriteList()
+        bg_path = "assets/bg/game_over_bg.jpg" 
+        if os.path.exists(bg_path):
+            self.bg_sprite = arcade.Sprite(bg_path)
+            self.bg_sprite.center_x, self.bg_sprite.center_y = self.window.width / 2, self.window.height / 2
+            self.bg_sprite.width, self.bg_sprite.height = self.window.width, self.window.height
+            self.bg_sprite_list.append(self.bg_sprite)
+        else:
+            self.bg_sprite = None
+
+        click_path = "assets/sfx/click_game_over.mp3"
+        self.sfx_click = arcade.load_sound(click_path) if os.path.exists(click_path) else None
+
     def build_ui(self):
         self.manager.clear()
+        self.menu_buttons.clear()
 
-        # 1. Dimmer Background
         dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
-        dimmer_anchor = arcade.gui.UIAnchorLayout()
-        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
-        self.manager.add(dimmer_anchor)
+        self.manager.add(arcade.gui.UIAnchorLayout(child=dimmer))
 
-        # 2. Panel Kaca Utama
-        panel_width = 650
-        panel_height = 450
+        panel_width, panel_height = 650, 450
         panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
-        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
-        panel_wrapper.add(child=panel_bg)
+        panel_wrapper.add(child=arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230)))
 
         main_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
-        # HEADER
+        # Header
         title_text = "🏆 TIM ANDA MENANG! 🏆" if self.is_player_win else "💀 TIM ANDA GUGUR 💀"
         title_color = arcade.color.GOLD if self.is_player_win else arcade.color.CRIMSON
         main_box.add(arcade.gui.UILabel(text=title_text, font_size=32, bold=True, text_color=title_color))
         main_box.add(arcade.gui.UILabel(text="", height=10))
 
+        # Konten
         if self.is_player_win:
-            # BOX HADIAH
             reward_box = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
             reward_box.add(arcade.gui.UILabel(text="HADIAH PERTEMPURAN:", font_size=14, bold=True, text_color=arcade.color.CYAN))
             reward_box.add(arcade.gui.UILabel(text=f"✨ +{self.total_exp} EXP   |   🪙 +{self.gold_reward} Gold", font_size=20, bold=True, text_color=arcade.color.LIGHT_GREEN))
             reward_box.add(arcade.gui.UILabel(text=f"Total Saldo Anda: {self.current_gold} Gold", font_size=12, text_color=arcade.color.LIGHT_GRAY))
-            
             main_box.add(reward_box)
             main_box.add(arcade.gui.UILabel(text="", height=15))
 
-            # BOX STATUS KARAKTER
-            status_bg = arcade.gui.UISpace(width=550, height=140, color=(10, 15, 20, 180))
             status_anchor = arcade.gui.UIAnchorLayout(width=550, height=140, size_hint=(None, None))
-            status_anchor.add(child=status_bg)
+            status_anchor.add(child=arcade.gui.UISpace(width=550, height=140, color=(10, 15, 20, 180)))
             
             status_box = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
             status_box.add(arcade.gui.UILabel(text="Laporan Pasukan:", font_size=12, text_color=arcade.color.WHITE))
-            
             for status in self.party_status:
                 color = arcade.color.YELLOW if "⭐" in status else arcade.color.GOLD
                 status_box.add(arcade.gui.UILabel(text=status, font_size=14, text_color=color, bold=True))
                 
             status_anchor.add(child=status_box, anchor_x="center", anchor_y="center")
             main_box.add(status_anchor)
-
         else:
-            # KETIKA KALAH
             main_box.add(arcade.gui.UILabel(text="Game Over.", font_size=18, text_color=arcade.color.LIGHT_GRAY))
             main_box.add(arcade.gui.UILabel(text="Tidak ada EXP maupun Gold yang diperoleh dari kekalahan.", font_size=14, text_color=arcade.color.GRAY))
             main_box.add(arcade.gui.UILabel(text="", height=50))
 
         main_box.add(arcade.gui.UILabel(text="", height=20))
 
-        # 3. TOMBOL KEMBALI
-        btn_style = {
-            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
-            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
-            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
-        }
-        
+        # Tombol Kembali
+        btn_style = {"normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2}, "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2}, "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}}
         btn_back = arcade.gui.UIFlatButton(text="Kembali ke Menu Utama", width=350, height=55, style=btn_style)
-        btn_back.on_click = self.on_menu_click
-        main_box.add(btn_back)
-
-        panel_wrapper.add(child=main_box, anchor_x="center", anchor_y="center")
         
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor)
+        def on_back(event=None):
+            from gui.views import BGMManager, MainMenuView
+            if self.sfx_click: BGMManager.play_sfx(self.sfx_click)
+            BGMManager.play("MENU")
+            self.manager.disable()
+            self.window.show_view(MainMenuView())
+            
+        btn_back.on_click = on_back
+        self.menu_buttons.append(btn_back) # Didaftarkan ke navigasi
+        
+        main_box.add(btn_back)
+        panel_wrapper.add(child=main_box, anchor_x="center", anchor_y="center")
+        self.manager.add(arcade.gui.UIAnchorLayout(child=panel_wrapper, anchor_x="center", anchor_y="center"))
 
     # ==========================================
-    # KONTROL & EVENT SYSTEM
+    # KONTROL & RENDER
     # ==========================================
-    def on_menu_click(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            # Jika BGMManager.play_sfx ada di BGMManager Anda, panggil. 
-            # Jika tidak, ganti dengan arcade.play_sound(self.sfx_click)
-            try:
-                BGMManager.play_sfx(self.sfx_click)
-            except AttributeError:
-                arcade.play_sound(self.sfx_click, volume=0.5)
-                
-        BGMManager.play("MENU")
-        self.manager.disable()
-        from gui.views import MainMenuView
-        self.window.show_view(MainMenuView())
+    def on_key_press(self, key, modifiers):
+        if not self.menu_buttons: return
+        if key in (arcade.key.ENTER, arcade.key.SPACE):
+            self.menu_buttons[0].on_click(None) # Hanya ada 1 tombol, langsung eksekusi
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.BLACK)
 
     def on_draw(self):
         self.clear()
-        if self.bg_sprite:
-            self.bg_sprite_list.draw()
+        if self.bg_sprite: self.bg_sprite_list.draw()
         self.manager.draw()
+        
+        # Kursor Panah
+        if self.menu_buttons:
+            btn = self.menu_buttons[0]
+            cx, cy = btn.rect.left - 30, btn.rect.center_y
+            alpha = int(200 + 55 * math.sin(time.time() * 8))
+            arcade.draw_text("▶", cx, cy, (*arcade.color.GOLD[:3], alpha), 20, bold=True, anchor_x="center", anchor_y="center")
 
-    def on_resize(self, width: int, height: int):
+    def on_resize(self, width, height):
         super().on_resize(width, height)
-        if hasattr(self, 'bg_sprite') and self.bg_sprite:
-            self.bg_sprite.center_x = width / 2
-            self.bg_sprite.center_y = height / 2
-            self.bg_sprite.width = width
-            self.bg_sprite.height = height
+        if self.bg_sprite:
+            self.bg_sprite.center_x, self.bg_sprite.center_y = width / 2, height / 2
+            self.bg_sprite.width, self.bg_sprite.height = width, height
 
 # ==========================================
 # LAYAR INVENTORY (REDESAIN: GRID & DETAILS PANE)
@@ -2829,8 +2909,9 @@ class BattleView(arcade.View):
     def build_ui(self):
         self.manager.clear()
         
-        def create_roster_card(char, status, click_action=None):
+        def create_roster_card(char, status, idx, click_action=None):
             card = arcade.gui.UIBoxLayout(vertical=False, space_between=8)
+            
             known_chars = ["emperor", "gladiator", "assassin", "mage", "knight", "valkyrie"]
             words = char.name.split('(')[0].strip().lower().split()
             base_name = next((w for w in reversed(words) if w in known_chars), words[0])
@@ -2849,12 +2930,20 @@ class BattleView(arcade.View):
             card.add(btn)
             
             info = arcade.gui.UIBoxLayout(vertical=True)
+            
+            # FIX BUG: Cek apakah idx bukan None sebelum memberikan Hotkey
+            hotkey = ""
+            if idx is not None and idx < 3:
+                hotkey = ["Q", "W", "E"][idx]
+            hotkey_text = f"[{hotkey}] " if hotkey else ""
+            
             if status == "DEAD":
                 info.add(arcade.gui.UILabel(text="💀 DEAD", text_color=arcade.color.GRAY, font_size=10, bold=True))
             else:
                 prefix = "▶ " if status == "ACTIVE" else "🔄 "
                 color = arcade.color.YELLOW if status == "ACTIVE" else arcade.color.WHITE
-                info.add(arcade.gui.UILabel(text=f"{prefix}{char.name.split()[0]}", text_color=color, font_size=11, bold=True))
+                # Masukkan hotkey_text ke UI
+                info.add(arcade.gui.UILabel(text=f"{hotkey_text}{prefix}{char.name.split()[0]}", text_color=color, font_size=11, bold=True))
                 hp_bars = int((max(0, char.current_hp) / char._max_hp) * 10)
                 info.add(arcade.gui.UILabel(text="█"*hp_bars + "░"*(10-hp_bars), text_color=arcade.color.RED, font_size=8))
             
@@ -2867,7 +2956,7 @@ class BattleView(arcade.View):
         for i, char in enumerate(self.player_party):
             status = "DEAD" if char.current_hp <= 0 else ("ACTIVE" if i == self.p1_idx else "WAIT")
             action = self.make_swap_action(i) if status == "WAIT" else None
-            left_box.add(create_roster_card(char, status, action))
+            left_box.add(create_roster_card(char, status, i, action))
             
         anchor_left = arcade.gui.UIAnchorLayout()
         # align_y=-160 untuk memastikan posisinya cukup jauh di bawah bar Mana
@@ -2933,10 +3022,10 @@ class BattleView(arcade.View):
             row1 = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
             row2 = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
             
-            row1.add(create_btn("⚔️ ATTACK", styles["atk"], self.on_attack_click))
-            row1.add(create_btn("🔥 SKILL", styles["skl"], self.on_skill_click))
-            row2.add(create_btn("💚 HEAL", styles["hl"], self.on_item_click))
-            row2.add(create_btn("🌟 ULTIMATE", styles["ult"], self.on_ultimate_click))
+            row1.add(create_btn("[1] ⚔️ ATTACK", styles["atk"], self.on_attack_click))
+            row1.add(create_btn("[2] 🔥 SKILL", styles["skl"], self.on_skill_click))
+            row2.add(create_btn("[3] 💚 HEAL", styles["hl"], self.on_item_click))
+            row2.add(create_btn("[4] 🌟 ULTIMATE", styles["ult"], self.on_ultimate_click))
             
             action_grid.add(row1); action_grid.add(row2)
             right_anchor_dash.add(child=action_grid, anchor_x="right", anchor_y="center", align_x=-40)
@@ -3329,9 +3418,43 @@ class BattleView(arcade.View):
     # ==========================================
     # 6. SISTEM SIKLUS GAME (UPDATE & DRAW)
     # ==========================================
+    # ==========================================
+    # KONTROL KEYBOARD & SHORTCUT
+    # ==========================================
     def on_key_press(self, key, modifiers):
+        # 1. Tombol Pause (Bisa ditekan kapan saja)
         if key == arcade.key.ESCAPE:
             self.toggle_pause()
+            return
+
+        # Jika sedang di-pause, matikan kontrol lain
+        if getattr(self, 'is_paused', False):
+            return
+
+        # 2. Kontrol Pertarungan (Hanya aktif saat giliran pemain)
+        if not self.is_player_turn or self.current_turn != self.p1_active:
+            return
+
+        # --- SHORTCUT AKSI (1/2/3/4 atau A/S/D/F) ---
+        if key in (arcade.key.KEY_1, arcade.key.A):
+            self.on_attack_click(None)
+        elif key in (arcade.key.KEY_2, arcade.key.S):
+            self.on_skill_click(None)
+        elif key in (arcade.key.KEY_3, arcade.key.D):
+            self.on_item_click(None)
+        elif key in (arcade.key.KEY_4, arcade.key.F):
+            self.on_ultimate_click(None)
+
+        # --- SHORTCUT GANTI KARAKTER / ROSTER (Q/W/E) ---
+        elif key == arcade.key.Q and len(self.player_party) > 0:
+            if self.player_party[0].current_hp > 0 and self.p1_idx != 0:
+                self.make_swap_action(0)(None)
+        elif key == arcade.key.W and len(self.player_party) > 1:
+            if self.player_party[1].current_hp > 0 and self.p1_idx != 1:
+                self.make_swap_action(1)(None)
+        elif key == arcade.key.E and len(self.player_party) > 2:
+            if self.player_party[2].current_hp > 0 and self.p1_idx != 2:
+                self.make_swap_action(2)(None)
 
     def toggle_pause(self):
         self.is_paused = not getattr(self, 'is_paused', False)

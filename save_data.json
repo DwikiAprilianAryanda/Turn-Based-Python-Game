@@ -25,7 +25,7 @@
             "exp": 200
         }
     },
-    "gold": 12150,
+    "gold": 12550,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -171,18 +171,5 @@
         "Zirah Kain",
         "Pedang Kayu",
         "Tombak Ksatria"
-    ],
-    "endless_state": {
-        "floor": 4,
-        "party": [
-            "Emperor",
-            "Emperor",
-            "Emperor"
-        ],
-        "equipments": [
-            "Mahkota Raja Iblis",
-            "Tangan Kosong",
-            "Tangan Kosong"
-        ]
-    }
+    ]
 }
