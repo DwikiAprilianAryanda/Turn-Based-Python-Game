@@ -19,6 +19,13 @@ class BGMManager:
     target_vol = 1.0
     current_vol = 1.0
     fade_speed = 0.5  # Kecepatan transisi volume
+    sfx_vol = 0.5
+
+    @classmethod
+    def play_sfx(cls, sound):
+        """Gunakan ini untuk semua play_sound SFX di seluruh game"""
+        if sound:
+            arcade.play_sound(sound, volume=cls.sfx_vol)
 
     @classmethod
     def play(cls, track_name):
@@ -99,71 +106,105 @@ class SettingsView(arcade.View):
         self.manager.add(dimmer_anchor)
 
         panel_width = 500
-        panel_height = 400
+        panel_height = 550  # Diperbesar untuk SFX section
         panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
         panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
         panel_wrapper.add(child=panel_bg)
 
-        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
+        v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         v_box.add(arcade.gui.UILabel(text="⚙️ PENGATURAN SUARA", font_size=26, bold=True, text_color=arcade.color.GOLD))
-        v_box.add(arcade.gui.UILabel(text="", height=10))
-
-        # Tampilkan volume BGM saat ini
-        current_vol = int(BGMManager.target_vol * 100)
-        v_box.add(arcade.gui.UILabel(
-            text=f"🎵 Volume BGM: {current_vol}%",
-            font_size=18, text_color=arcade.color.WHITE, bold=True
-        ))
-
-        # Baris tombol +/-
-        vol_row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        v_box.add(arcade.gui.UILabel(text="", height=5))
 
         vol_btn_style = {
             "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
             "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
             "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
         }
-
         mute_style = {
             "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.RED, "border_width": 2},
             "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
             "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.MAROON, "border_color": arcade.color.WHITE, "border_width": 2}
         }
 
-        btn_down = arcade.gui.UIFlatButton(text="🔉 -10%", width=130, height=50, style=vol_btn_style)
-        btn_up = arcade.gui.UIFlatButton(text="🔊 +10%", width=130, height=50, style=vol_btn_style)
-        btn_mute = arcade.gui.UIFlatButton(text="🔇 MUTE", width=130, height=50, style=mute_style)
+        # ==========================================
+        # SECTION BGM
+        # ==========================================
+        bgm_vol_pct = int(BGMManager.target_vol * 100)
+        v_box.add(arcade.gui.UILabel(text=f"🎵 Volume BGM: {bgm_vol_pct}%", font_size=18, text_color=arcade.color.WHITE, bold=True))
 
-        def on_vol_down(event):
-            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+        bgm_row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        btn_bgm_down = arcade.gui.UIFlatButton(text="🔉 -10%", width=130, height=50, style=vol_btn_style)
+        btn_bgm_mute = arcade.gui.UIFlatButton(text="🔇 MUTE", width=130, height=50, style=mute_style)
+        btn_bgm_up   = arcade.gui.UIFlatButton(text="🔊 +10%", width=130, height=50, style=vol_btn_style)
+
+        def on_bgm_down(event):
             BGMManager.target_vol = max(0.0, round(BGMManager.target_vol - 0.1, 1))
+            BGMManager.play_sfx(self.sfx_click)
             self.build_ui()
 
-        def on_vol_up(event):
-            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+        def on_bgm_up(event):
             BGMManager.target_vol = min(1.0, round(BGMManager.target_vol + 0.1, 1))
+            BGMManager.play_sfx(self.sfx_click)
             self.build_ui()
 
-        def on_mute(event):
-            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+        def on_bgm_mute(event):
             BGMManager.target_vol = 0.0 if BGMManager.target_vol > 0 else 1.0
+            BGMManager.play_sfx(self.sfx_click)
             self.build_ui()
 
-        btn_down.on_click = on_vol_down
-        btn_up.on_click = on_vol_up
-        btn_mute.on_click = on_mute
+        btn_bgm_down.on_click = on_bgm_down
+        btn_bgm_mute.on_click = on_bgm_mute
+        btn_bgm_up.on_click   = on_bgm_up
+        bgm_row.add(btn_bgm_down)
+        bgm_row.add(btn_bgm_mute)
+        bgm_row.add(btn_bgm_up)
+        v_box.add(bgm_row)
 
-        vol_row.add(btn_down)
-        vol_row.add(btn_mute)
-        vol_row.add(btn_up)
-        v_box.add(vol_row)
+        bgm_filled = int(BGMManager.target_vol * 10)
+        bgm_bar = "█" * bgm_filled + "░" * (10 - bgm_filled)
+        bgm_bar_color = arcade.color.LIME_GREEN if bgm_filled > 3 else arcade.color.RED
+        v_box.add(arcade.gui.UILabel(text=bgm_bar, font_size=22, text_color=bgm_bar_color, bold=True))
 
-        # Visual bar volume
-        bar_total = 10
-        filled = int(BGMManager.target_vol * bar_total)
-        bar_str = "█" * filled + "░" * (bar_total - filled)
-        bar_color = arcade.color.LIME_GREEN if filled > 3 else arcade.color.RED
-        v_box.add(arcade.gui.UILabel(text=bar_str, font_size=22, text_color=bar_color, bold=True))
+        v_box.add(arcade.gui.UILabel(text="", height=5))
+
+        # ==========================================
+        # SECTION SFX
+        # ==========================================
+        sfx_vol_pct = int(BGMManager.sfx_vol * 100)
+        v_box.add(arcade.gui.UILabel(text=f"🔔 Volume SFX & Klik: {sfx_vol_pct}%", font_size=18, text_color=arcade.color.WHITE, bold=True))
+
+        sfx_row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        btn_sfx_down = arcade.gui.UIFlatButton(text="🔉 -10%", width=130, height=50, style=vol_btn_style)
+        btn_sfx_mute = arcade.gui.UIFlatButton(text="🔇 MUTE", width=130, height=50, style=mute_style)
+        btn_sfx_up   = arcade.gui.UIFlatButton(text="🔊 +10%", width=130, height=50, style=vol_btn_style)
+
+        def on_sfx_down(event):
+            BGMManager.sfx_vol = max(0.0, round(BGMManager.sfx_vol - 0.1, 1))
+            BGMManager.play_sfx(self.sfx_click)
+            self.build_ui()
+
+        def on_sfx_up(event):
+            BGMManager.sfx_vol = min(1.0, round(BGMManager.sfx_vol + 0.1, 1))
+            BGMManager.play_sfx(self.sfx_click)
+            self.build_ui()
+
+        def on_sfx_mute(event):
+            BGMManager.sfx_vol = 0.0 if BGMManager.sfx_vol > 0 else 0.5
+            BGMManager.play_sfx(self.sfx_click)
+            self.build_ui()
+
+        btn_sfx_down.on_click = on_sfx_down
+        btn_sfx_mute.on_click = on_sfx_mute
+        btn_sfx_up.on_click   = on_sfx_up
+        sfx_row.add(btn_sfx_down)
+        sfx_row.add(btn_sfx_mute)
+        sfx_row.add(btn_sfx_up)
+        v_box.add(sfx_row)
+
+        sfx_filled = int(BGMManager.sfx_vol * 10)
+        sfx_bar = "█" * sfx_filled + "░" * (10 - sfx_filled)
+        sfx_bar_color = arcade.color.CYAN if sfx_filled > 3 else arcade.color.RED
+        v_box.add(arcade.gui.UILabel(text=sfx_bar, font_size=22, text_color=sfx_bar_color, bold=True))
 
         v_box.add(arcade.gui.UILabel(text="", height=10))
 
@@ -175,7 +216,7 @@ class SettingsView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="❌ Kembali ke Menu", width=300, height=50, style=cancel_style)
 
         def on_back(event):
-            if self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
             self.manager.disable()
             self.window.show_view(MainMenuView())
 
@@ -315,7 +356,7 @@ class ModeSelectionView(arcade.View):
 
     def on_resume_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from engine.save_manager import SaveManager
         from engine.factory import CharacterFactory
@@ -392,14 +433,14 @@ class ModeSelectionView(arcade.View):
 
     def on_standard_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from gui.views import DifficultySelectionView 
         self.window.show_view(DifficultySelectionView(party_size=3)) 
 
     def on_endless_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         from engine.save_manager import SaveManager
         SaveManager.clear_endless_state() # Hapus save lama jika mulai baru
         self.manager.disable()
@@ -408,7 +449,7 @@ class ModeSelectionView(arcade.View):
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
@@ -505,7 +546,7 @@ class MainMenuView(arcade.View):
             btn = arcade.gui.UIFlatButton(text=f"{icon}   {text}", width=360, height=55, style=style)
             
             def action_wrapper(event):
-                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
                 action_func(event)
                 
             btn.on_click = action_wrapper
@@ -648,7 +689,7 @@ class GachaView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="< Kembali", width=120, height=40, style=cancel_style)
         
         def on_back_sfx(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: arcade.play_sound(self.sfx_click2, volume=0.5)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
             self.on_back_click(event)
             
         back_btn.on_click = on_back_sfx
@@ -783,7 +824,7 @@ class GachaView(arcade.View):
         
         # Membungkus aksi klik dengan SFX
         def on_pull_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
             self.on_pull_click(event)
             
         pull_btn.on_click = on_pull_sfx
@@ -802,7 +843,7 @@ class GachaView(arcade.View):
         info_btn = arcade.gui.UIFlatButton(text="ℹ️ Rincian Drop Rate", width=200, height=45, style=info_style)
         
         def on_info_click(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: arcade.play_sound(self.sfx_click2, volume=0.5)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
             self.build_info_ui() # Memanggil layar info!
             
         info_btn.on_click = on_info_click
@@ -851,7 +892,7 @@ class GachaView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="Tutup & Kembali", width=250, height=50, style=cancel_style)
         
         def on_close_info(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: arcade.play_sound(self.sfx_click2, volume=0.5)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
             self.build_ui() # Kembali ke layar Banner utama
             
         back_btn.on_click = on_close_info
@@ -930,7 +971,7 @@ class GachaView(arcade.View):
         btn = arcade.gui.UIFlatButton(text="Lanjutkan", width=300, height=60, style=rpg_btn_style)
         
         def on_continue_sfx(event):
-            if hasattr(self, 'sfx_click2') and self.sfx_click2: arcade.play_sound(self.sfx_click2, volume=0.5)
+            if hasattr(self, 'sfx_click2') and self.sfx_click2: BGMManager.play_sfx(self.sfx_click)
             self.on_continue_click(event)
             
         btn.on_click = on_continue_sfx
@@ -951,7 +992,7 @@ class GachaView(arcade.View):
 
     def on_pull_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         from engine.gacha_system import GachaSystem
         from engine.save_manager import SaveManager
 
@@ -978,7 +1019,7 @@ class GachaView(arcade.View):
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click2') and self.sfx_click2:
-            arcade.play_sound(self.sfx_click2, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
@@ -1166,7 +1207,7 @@ class DifficultySelectionView(arcade.View):
         
         # Tombol kembali butuh pembungkus SFX karena di fungsi on_back_click asli belum ada
         def on_back_wrapper(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
             self.on_back_click(event)
             
         btn_back = create_diff_btn("Kembali ke Pemilihan Mode", cancel_style, on_back_wrapper)
@@ -1188,17 +1229,17 @@ class DifficultySelectionView(arcade.View):
     # ==========================================
     def on_easy(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.select_diff("EASY")
 
     def on_medium(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.select_diff("MEDIUM")
 
     def on_hard(self, event): 
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.select_diff("HARD")
 
     def select_diff(self, diff):
@@ -1510,7 +1551,7 @@ class CharacterSelectionView(arcade.View):
 
     def make_select_action(self, char_name, is_player):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         def action(event):
             if is_player and len(self.player_party) < self.party_size:
                 self.player_party.append(char_name)
@@ -1523,7 +1564,7 @@ class CharacterSelectionView(arcade.View):
 
     def on_undo_player(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         if self.player_party:
             self.player_party.pop() 
             self.last_player_char = self.player_party[-1] if self.player_party else None
@@ -1531,7 +1572,7 @@ class CharacterSelectionView(arcade.View):
 
     def on_undo_enemy(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         if self.enemy_party:
             self.enemy_party.pop() 
             self.last_enemy_char = self.enemy_party[-1] if self.enemy_party else None
@@ -1539,7 +1580,7 @@ class CharacterSelectionView(arcade.View):
 
     def on_random(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         import random
         while len(self.player_party) < self.party_size:
             self.player_party.append(random.choice(self.available_characters))
@@ -1552,14 +1593,14 @@ class CharacterSelectionView(arcade.View):
 
     def on_ready(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from gui.views import EquipmentSelectionView
         self.window.show_view(EquipmentSelectionView(self.player_party, self.enemy_party, self.difficulty))
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from gui.views import DifficultySelectionView
         self.window.show_view(DifficultySelectionView(self.party_size))
@@ -1742,7 +1783,7 @@ class EquipmentSelectionView(arcade.View):
             def create_open_action(index):
                 original_action = self.make_open_picker_action(index)
                 def wrapper(event):
-                    if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                    if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
                     original_action(event)
                 return wrapper
                 
@@ -1773,7 +1814,7 @@ class EquipmentSelectionView(arcade.View):
         start_btn = arcade.gui.UIFlatButton(text="🔥 MASUK KE ARENA 🔥", width=400, height=60, style=ready_style)
         
         def on_start_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
             self.on_start_battle(event)
             
         start_btn.on_click = on_start_sfx
@@ -1785,14 +1826,14 @@ class EquipmentSelectionView(arcade.View):
 
     def make_open_picker_action(self, char_idx):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         def action(event):
             self.open_item_picker(char_idx)
         return action
 
     def open_item_picker(self, char_idx):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
             
         self.manager.clear()
         
@@ -1951,7 +1992,7 @@ class EquipmentSelectionView(arcade.View):
         
         def on_back(event):
             if hasattr(self, 'sfx_click') and self.sfx_click:
-                arcade.play_sound(self.sfx_click, volume=0.5)
+                BGMManager.play_sfx(self.sfx_click)
             self.build_main_ui()
             
         back_btn.on_click = on_back
@@ -1963,7 +2004,7 @@ class EquipmentSelectionView(arcade.View):
 
     def make_select_item_action(self, char_idx, item_name):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         def action(event):
             # 1. Kembalikan item lama ke inventory (jika bukan Tangan Kosong)
             old_item = self.equipped_items[char_idx]
@@ -1983,7 +2024,7 @@ class EquipmentSelectionView(arcade.View):
 
     def on_start_battle(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from models.equipment import Equipment 
         from models.synergy import SynergyBuff # IMPORT DECORATOR BARU KITA
@@ -2170,7 +2211,7 @@ class GameOverView(arcade.View):
 
     def on_menu_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         BGMManager.play("MENU")
         self.manager.disable()
         self.window.show_view(MainMenuView())
@@ -2304,7 +2345,7 @@ class InventoryView(arcade.View):
                 def create_select_action(name):
                     original_action = self.make_select_action(name)
                     def wrapper(event):
-                        if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                        if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
                         original_action(event)
                     return wrapper
                     
@@ -2324,7 +2365,7 @@ class InventoryView(arcade.View):
         back_btn = arcade.gui.UIFlatButton(text="❌ KEMBALI KE MENU", width=320, height=50, style=cancel_style)
         
         def on_back_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
             self.on_back_click(event)
             
         back_btn.on_click = on_back_sfx
@@ -2415,7 +2456,7 @@ class InventoryView(arcade.View):
 
     def make_select_action(self, item_name):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         def action(event):
             # Update state item yang dipilih dan gambar ulang (refresh) UI-nya
             self.selected_item = item_name
@@ -2424,7 +2465,7 @@ class InventoryView(arcade.View):
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         # Menggunakan lazy import agar tidak circular
         from gui.views import MainMenuView
@@ -2731,7 +2772,7 @@ class BattleView(arcade.View):
             # --- MAIN SFX UI KLIK ---
             if hasattr(self, 'sfx_click') and self.sfx_click:
                 # Volume diset 0.5 agar tidak terlalu berisik
-                arcade.play_sound(self.sfx_click, volume=0.5) 
+                BGMManager.play_sfx(self.sfx_click) 
             
             old_char = self.p1_active
             target_char = self.player_party[target_idx]
@@ -2842,7 +2883,7 @@ class BattleView(arcade.View):
         if self.current_turn == self.p1_active:
             # --- MAIN SFX ATTACK ---
             if hasattr(self, 'sfx_attack') and self.sfx_attack:
-                arcade.play_sound(self.sfx_attack, volume=0.8)
+                BGMManager.play_sfx(self.sfx_attack)
                 
             self.attack_anim_timer = 0.3 
             self.attacking_side = 1
@@ -2876,7 +2917,7 @@ class BattleView(arcade.View):
         if self.current_turn == self.p1_active:
             # --- MAIN SFX SKILL ---
             if hasattr(self, 'sfx_skill') and self.sfx_skill:
-                arcade.play_sound(self.sfx_skill, volume=0.9)
+                BGMManager.play_sfx(self.sfx_skill)
                 
             self.attack_anim_timer = 0.4 
             self.attacking_side = 1
@@ -2900,7 +2941,7 @@ class BattleView(arcade.View):
         if self.current_turn == self.p1_active:
             # --- MAIN SFX HEAL ---
             if hasattr(self, 'sfx_heal') and self.sfx_heal:
-                arcade.play_sound(self.sfx_heal, volume=1.0)
+                BGMManager.play_sfx(self.sfx_heal)
                 
             from engine.commands import UseItemCommand
             from models.item import HealthPotion
@@ -2927,7 +2968,7 @@ class BattleView(arcade.View):
             else:
                 # --- MAIN SFX ULTIMATE ---
                 if hasattr(self, 'sfx_ulti') and self.sfx_ulti:
-                    arcade.play_sound(self.sfx_ulti, volume=1.0)
+                    BGMManager.play_sfx(self.sfx_ulti)
                     
                 self.attack_anim_timer = 0.6 
                 self.attacking_side = 1
@@ -3317,7 +3358,7 @@ class EndlessCharacterSelectionView(arcade.View):
                 original_action = self.make_select_action(char_name)
                 def wrapper(event):
                     if hasattr(self, 'sfx_click') and self.sfx_click:
-                        arcade.play_sound(self.sfx_click, volume=0.5)
+                        BGMManager.play_sfx(self.sfx_click)
                     original_action(event)
                 return wrapper
                 
@@ -3335,7 +3376,7 @@ class EndlessCharacterSelectionView(arcade.View):
         if self.player_party:
             undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal Pilihan", width=230, height=45, style=cancel_style)
             def on_undo_sfx(event):
-                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
                 self.on_undo(event)
             undo_btn.on_click = on_undo_sfx
             left_content.add(undo_btn)
@@ -3363,7 +3404,7 @@ class EndlessCharacterSelectionView(arcade.View):
         if len(self.player_party) == 3:
             ready_btn = arcade.gui.UIFlatButton(text="⚔️ MASUK KE MENARA", width=250, height=60, style=ready_style)
             def on_ready_sfx(event):
-                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
                 self.on_ready(event)
             ready_btn.on_click = on_ready_sfx
             center_panel.add(ready_btn)
@@ -3373,7 +3414,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
         back_btn = arcade.gui.UIFlatButton(text="❌ Kembali", width=250, height=50, style=cancel_style)
         def on_back_sfx(event):
-            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            if hasattr(self, 'sfx_click') and self.sfx_click: BGMManager.play_sfx(self.sfx_click)
             self.on_back_click(event)
         back_btn.on_click = on_back_sfx
         center_panel.add(back_btn)
@@ -3476,7 +3517,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
     def make_select_action(self, char_name):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         def action(event):
             if len(self.player_party) < self.party_size:
                 self.player_party.append(char_name)
@@ -3486,7 +3527,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
     def on_undo(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         if self.player_party:
             self.player_party.pop()
             self.last_player_char = self.player_party[-1] if self.player_party else None
@@ -3496,7 +3537,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
     def on_ready(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         import random
         self.manager.disable()
         
@@ -3509,7 +3550,7 @@ class EndlessCharacterSelectionView(arcade.View):
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         self.manager.disable()
         from gui.views import ModeSelectionView
         self.window.show_view(ModeSelectionView())
@@ -3679,7 +3720,7 @@ class EndlessRewardView(arcade.View):
         from engine.gacha_system import GachaSystem
 
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
 
         new_floor = self.cleared_floor + 1
         available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
@@ -3711,7 +3752,7 @@ class EndlessRewardView(arcade.View):
         from engine.save_manager import SaveManager
         
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
 
         equipments = []
         for char in self.surviving_party:
@@ -3728,7 +3769,7 @@ class EndlessRewardView(arcade.View):
 
     def on_home(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            arcade.play_sound(self.sfx_click, volume=0.5)
+            BGMManager.play_sfx(self.sfx_click)
         from engine.save_manager import SaveManager
         SaveManager.add_gold(self.gold_reward)
         SaveManager.clear_endless_state() # Reset lantai ke 1

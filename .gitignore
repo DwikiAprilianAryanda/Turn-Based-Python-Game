@@ -27,7 +27,7 @@ Thumbs.db
 
 # Game saves & history (do not commit save files)
 save_data.json
-match_history.json
+match_history.jso
 game_python.zip
 main.spec
 
