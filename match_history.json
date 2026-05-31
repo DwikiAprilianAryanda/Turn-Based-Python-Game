@@ -502,5 +502,11 @@
         "pemenang": "Tim Pemain",
         "kalah": "Tim Musuh",
         "sisa_hp_pemenang": 1058
+    },
+    {
+        "waktu": "2026-05-31 13:09:01",
+        "pemenang": "Tim Pemain",
+        "kalah": "Tim Musuh",
+        "sisa_hp_pemenang": 962
     }
 ]
