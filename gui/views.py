@@ -980,172 +980,207 @@ class CharacterSelectionView(arcade.View):
 
     def build_ui(self):
         self.manager.clear()
-        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+
+        # ==========================================
+        # 1. JURUS DIMMER GLOBAL
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 25, 200))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        main_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=30)
 
         # ========================================
-        # ALAT BANTU: Pencari Gambar Khusus Menu
+        # GAYA TOMBOL RPG MODERN
         # ========================================
-        def get_portrait_widget(char_name, fallback_color):
-            import os
-            for ext in ['.png', '.jpg', '.jpeg']:
-                path = f"assets/{char_name.lower()}_menu{ext}"
-                if os.path.exists(path):
-                    # 1. Jadikan Sprite terlebih dahulu
-                    sprite = arcade.Sprite(path)
-                    
-                    # 2. Kita tidak perlu memaksakan width/height di sini. 
-                    # Cukup sesuaikan scale sprite-nya saja.
-                    # Asumsikan tinggi ideal untuk kotak menu adalah sekitar 120 pixel
-                    target_height = 120
-                    
-                    # Ambil tinggi sprite yang sebenarnya
-                    actual_height = sprite.height 
-                    
-                    # Hitung scale yang diperlukan
-                    if actual_height > 0:
-                        sprite.scale = target_height / actual_height
-                    
-                    # 3. Masukkan Sprite tersebut ke dalam UI
-                    return arcade.gui.UISpriteWidget(sprite=sprite)
-                    
-            # Jika gambar tidak ada, gunakan kotak warna sebagai cadangan
-            return arcade.gui.UISpace(width=120, height=120, color=fallback_color)
-
-        # ========================================
-        # PANEL KIRI: PEMAIN
-        # ========================================
-        left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
-        left_panel.add(arcade.gui.UILabel(text=f"TIM ANDA ({len(self.player_party)}/{self.party_size})", font_size=18, bold=True, text_color=arcade.color.LIGHT_BLUE))
-
-        p_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
-        p_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
-        p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
-
-        for i, char in enumerate(self.available_characters):
-            element_icon = self.element_map[char]
-            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {element_icon}", width=80, height=40)
-            btn.on_click = self.make_select_action(char, is_player=True)
-            if i % 2 == 0: p_col1.add(btn)
-            else: p_col2.add(btn)
-            
-        p_grid.add(p_col1)
-        p_grid.add(p_col2)
-        left_panel.add(p_grid)
-
-        left_panel.add(arcade.gui.UILabel(text="", height=5))
+        rpg_btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
         
-        # Area Gambar Portrait & Info Detail Pemain
-        if self.last_player_char:
-            # FIX: Tampilkan gambar _menu di sini
-            left_panel.add(get_portrait_widget(self.last_player_char, arcade.color.DARK_BLUE))
-            
-            char_display = f"{self.element_map[self.last_player_char]} {self.last_player_char}"
-            left_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
-            
-            info = self.char_info[self.last_player_char]
-            info_text = f"🛡️ {info['role']}\n📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
-            left_panel.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=300))
-            
-            left_panel.add(arcade.gui.UILabel(text="", height=5))
-            undo_p_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150, height=30)
-            undo_p_btn.on_click = self.on_undo_player
-            left_panel.add(undo_p_btn)
-        else:
-            left_panel.add(arcade.gui.UISpace(width=120, height=120, color=arcade.color.DARK_GRAY))
-            left_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
 
-        left_panel.add(arcade.gui.UILabel(text="", height=10))
-        syn_name_p, syn_color_p = self.get_synergy(self.player_party)
-        left_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
-        left_panel.add(arcade.gui.UILabel(text=syn_name_p, font_size=14, bold=True, text_color=syn_color_p))
+        # ========================================
+        # ALAT BANTU: PEMANGGIL GAMBAR (RGBA FIX)
+        # ========================================
+        def get_portrait_widget(char_name):
+            import os
+            from PIL import Image as PILImage
+            if not char_name:
+                return arcade.gui.UISpace(width=200, height=250, color=(0,0,0,0))
+                
+            clean_name = char_name.split('(')[0].split('+')[0].strip()
+            safe_name = clean_name.lower().replace(" ", "_")
+            
+            for ext in ['.png', '.jpg', '.jpeg']:
+                path = f"assets/{safe_name}_menu{ext}"
+                if not os.path.exists(path):
+                    path = f"assets/{safe_name}{ext}" # Fallback
+                    
+                if os.path.exists(path):
+                    try:
+                        pil_img = PILImage.open(path).convert("RGBA")
+                        tex = arcade.Texture(name=f"sel_{safe_name}", image=pil_img)
+                        # Tinggi dikunci di 250px agar pas di layout tanpa merusak proporsi
+                        scaled_height = 250 
+                        scaled_width = int(tex.width * (scaled_height / tex.height))
+                        
+                        try:
+                            widget = arcade.gui.UIImage(texture=tex, width=scaled_width, height=scaled_height)
+                        except AttributeError:
+                            sprite = arcade.Sprite()
+                            sprite.texture = tex
+                            sprite.scale = scaled_height / tex.height
+                            widget = arcade.gui.UISpriteWidget(sprite=sprite, width=scaled_width, height=scaled_height)
+                            
+                        return widget.with_background(color=(0, 0, 0, 0))
+                    except Exception as e:
+                        print(f"⚠️ Gagal load image {path}: {e}")
+                    break
+            
+            return arcade.gui.UISpace(width=200, height=250, color=(30, 35, 50))
 
 
         # ========================================
-        # PANEL TENGAH: KONTROL 
+        # FUNGSI PEMBUAT PANEL KIRI/KANAN
         # ========================================
-        center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
-        center_panel.add(arcade.gui.UILabel(text="VS", font_size=36, bold=True, text_color=arcade.color.CRIMSON))
+        def create_side_panel(is_player):
+            panel_width = 340
+            panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+            
+            # 1. Header & Grid Pilihan
+            party = self.player_party if is_player else self.enemy_party
+            title_text = f"TIM ANDA ({len(party)}/{self.party_size})" if is_player else f"TIM LAWAN ({len(party)}/{self.party_size})"
+            title_color = arcade.color.CYAN if is_player else arcade.color.CRIMSON
+            
+            panel.add(arcade.gui.UILabel(text=title_text, font_size=18, bold=True, text_color=title_color))
+            
+            grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
+            col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+            col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
 
-        rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM", width=150)
+            for i, char in enumerate(self.available_characters):
+                btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {self.element_map[char]}", width=110, height=45, style=rpg_btn_style)
+                btn.on_click = self.make_select_action(char, is_player=is_player)
+                if i % 2 == 0: col1.add(btn)
+                else: col2.add(btn)
+                
+            grid.add(col1)
+            grid.add(col2)
+            panel.add(grid)
+            panel.add(arcade.gui.UILabel(text="", height=5))
+
+            # 2. Gambar Karakter & Info Box
+            last_char = self.last_player_char if is_player else self.last_enemy_char
+            
+            # Wadah untuk Gambar Karakter
+            img_anchor = arcade.gui.UIAnchorLayout(width=panel_width, height=260, size_hint=(None, None))
+            img_anchor.add(child=get_portrait_widget(last_char), anchor_x="center", anchor_y="bottom")
+            panel.add(img_anchor)
+            
+            # Wadah Kaca Gelap untuk Teks Info (Agar selalu terbaca!)
+            info_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=140, size_hint=(None, None))
+            info_bg = arcade.gui.UISpace(width=panel_width, height=140, color=(15, 20, 30, 220))
+            info_wrapper.add(child=info_bg)
+            
+            info_box = arcade.gui.UIBoxLayout(vertical=True)
+            if last_char:
+                char_display = f"{self.element_map[last_char]} {last_char.upper()}"
+                info_box.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
+                
+                info = self.char_info[last_char]
+                info_text = f"🛡️ {info['role']}  |  📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
+                info_box.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=panel_width - 20))
+            else:
+                info_box.add(arcade.gui.UILabel(text="Belum ada karakter dipilih", font_size=14, text_color=arcade.color.GRAY))
+                
+            info_wrapper.add(child=info_box, anchor_x="center", anchor_y="center")
+            panel.add(info_wrapper)
+            
+            # 3. Sinergi & Tombol Batal
+            syn_name, syn_color = self.get_synergy(party)
+            syn_box = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+            
+            syn_text_box = arcade.gui.UIBoxLayout(vertical=True)
+            syn_text_box.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=11, text_color=arcade.color.WHITE))
+            syn_text_box.add(arcade.gui.UILabel(text=syn_name, font_size=12, bold=True, text_color=syn_color))
+            
+            syn_box.add(syn_text_box)
+            
+            if last_char:
+                undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=100, height=35, style=cancel_style)
+                undo_btn.on_click = self.on_undo_player if is_player else self.on_undo_enemy
+                syn_box.add(undo_btn)
+                
+            panel.add(syn_box)
+            return panel
+
+
+        # ========================================
+        # PEMBANGUNAN 3 PILAR LAYOUT
+        # ========================================
+        
+        # PILAR KIRI
+        main_layout.add(create_side_panel(is_player=True))
+
+        # PILAR TENGAH (KONTROL)
+        center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
+        
+        center_panel.add(arcade.gui.UILabel(text="VS", font_size=42, bold=True, text_color=arcade.color.CRIMSON))
+
+        rand_btn = arcade.gui.UIFlatButton(text="🎲 RANDOM SEMUA", width=200, height=50, style=rpg_btn_style)
         rand_btn.on_click = self.on_random
         center_panel.add(rand_btn)
 
-        element_info = arcade.gui.UIBoxLayout(vertical=True, space_between=2)
-        element_info.add(arcade.gui.UILabel(text="Rantai Elemen:", font_size=12, text_color=arcade.color.WHITE))
-        element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun", font_size=12, bold=True))
-        element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air", font_size=12, text_color=arcade.color.LIGHT_GREEN, bold=True))
-        element_info.add(arcade.gui.UILabel(text="🔵 Air > 🔴 Api", font_size=12, text_color=arcade.color.LIGHT_BLUE, bold=True))
-        center_panel.add(element_info)
+        # Papan Rantai Elemen dengan latar belakang kaca gelap mini
+        element_wrapper = arcade.gui.UIAnchorLayout(width=200, height=110, size_hint=(None, None))
+        element_bg = arcade.gui.UISpace(width=200, height=110, color=(15, 20, 30, 180))
+        element_wrapper.add(child=element_bg)
+        
+        element_info = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        element_info.add(arcade.gui.UILabel(text="⚔️ Rantai Elemen:", font_size=14, text_color=arcade.color.GOLD, bold=True))
+        element_info.add(arcade.gui.UILabel(text="🔴 Api > 🌿 Daun", font_size=13, bold=True, text_color=arcade.color.WHITE))
+        element_info.add(arcade.gui.UILabel(text="🌿 Daun > 🔵 Air", font_size=13, bold=True, text_color=arcade.color.LIGHT_GREEN))
+        element_info.add(arcade.gui.UILabel(text="🔵 Air > 🔴 Api", font_size=13, bold=True, text_color=arcade.color.LIGHT_BLUE))
+        
+        element_wrapper.add(child=element_info, anchor_x="center", anchor_y="center")
+        center_panel.add(element_wrapper)
+
+        center_panel.add(arcade.gui.UILabel(text="", height=60)) # Spacer
+
+        ready_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
 
         if len(self.player_party) == self.party_size and len(self.enemy_party) == self.party_size:
-            ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=150)
+            ready_btn = arcade.gui.UIFlatButton(text="✅ SELESAI", width=200, height=60, style=ready_style)
             ready_btn.on_click = self.on_ready
             center_panel.add(ready_btn)
         else:
-            wait_btn = arcade.gui.UIFlatButton(text="Pilih Karakter...", width=150)
+            wait_btn = arcade.gui.UIFlatButton(text="Pilih Karakter...", width=200, height=60, style=rpg_btn_style)
             center_panel.add(wait_btn)
 
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=150)
+        back_btn = arcade.gui.UIFlatButton(text="❌ Kembali", width=200, height=45, style=cancel_style)
         back_btn.on_click = self.on_back_click
         center_panel.add(back_btn)
 
-
-        # ========================================
-        # PANEL KANAN: MUSUH
-        # ========================================
-        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
-        right_panel.add(arcade.gui.UILabel(text=f"TIM LAWAN ({len(self.enemy_party)}/{self.party_size})", font_size=18, bold=True, text_color=arcade.color.CRIMSON))
-
-        e_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
-        e_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
-        e_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
-
-        for i, char in enumerate(self.available_characters):
-            element_icon = self.element_map[char]
-            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {element_icon}", width=80, height=40)
-            btn.on_click = self.make_select_action(char, is_player=False)
-            if i % 2 == 0: e_col1.add(btn)
-            else: e_col2.add(btn)
-            
-        e_grid.add(e_col1)
-        e_grid.add(e_col2)
-        right_panel.add(e_grid)
-
-        right_panel.add(arcade.gui.UILabel(text="", height=5))
-        
-        # Area Gambar Portrait & Info Detail Musuh
-        if self.last_enemy_char:
-            # FIX: Tampilkan gambar _menu di sini
-            right_panel.add(get_portrait_widget(self.last_enemy_char, arcade.color.DARK_RED))
-            
-            char_display = f"{self.element_map[self.last_enemy_char]} {self.last_enemy_char}"
-            right_panel.add(arcade.gui.UILabel(text=char_display, font_size=16, bold=True, text_color=arcade.color.WHITE))
-            
-            info = self.char_info[self.last_enemy_char]
-            info_text = f"🛡️ {info['role']}\n📊 {info['stats']}\n\n🌟 Pasif: {info['passive']}\n🔥 Ulti: {info['ulti']}"
-            right_panel.add(arcade.gui.UILabel(text=info_text, font_size=11, text_color=arcade.color.LIGHT_GRAY, multiline=True, width=300))
-            
-            right_panel.add(arcade.gui.UILabel(text="", height=5))
-            undo_e_btn = arcade.gui.UIFlatButton(text="↩️ Batal", width=150, height=30)
-            undo_e_btn.on_click = self.on_undo_enemy
-            right_panel.add(undo_e_btn)
-        else:
-            right_panel.add(arcade.gui.UISpace(width=120, height=120, color=arcade.color.DARK_GRAY))
-            right_panel.add(arcade.gui.UILabel(text="Pilih Karakter", font_size=14, text_color=arcade.color.GRAY))
-
-        right_panel.add(arcade.gui.UILabel(text="", height=10))
-        syn_name_e, syn_color_e = self.get_synergy(self.enemy_party)
-        right_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=12, text_color=arcade.color.WHITE))
-        right_panel.add(arcade.gui.UILabel(text=syn_name_e, font_size=14, bold=True, text_color=syn_color_e))
-
-
-        main_layout.add(left_panel)
         main_layout.add(center_panel)
-        main_layout.add(right_panel)
 
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=main_layout, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor)
+        # PILAR KANAN
+        main_layout.add(create_side_panel(is_player=False))
+
+        # Tempelkan triptych utama ke layar
+        final_anchor = arcade.gui.UIAnchorLayout()
+        final_anchor.add(child=main_layout, anchor_x="center", anchor_y="center")
+        self.manager.add(final_anchor)
 
     def make_select_action(self, char_name, is_player):
         if hasattr(self, 'sfx_click') and self.sfx_click:
