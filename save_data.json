@@ -2,11 +2,11 @@
     "characters": {
         "Emperor": {
             "level": 11,
-            "exp": 5
+            "exp": 245
         },
         "Mage": {
             "level": 7,
-            "exp": 85
+            "exp": 245
         },
         "Gladiator": {
             "level": 3,
@@ -14,7 +14,7 @@
         },
         "Assassin": {
             "level": 4,
-            "exp": 50
+            "exp": 130
         },
         "Knight": {
             "level": 4,
@@ -25,7 +25,7 @@
             "exp": 200
         }
     },
-    "gold": 11600,
+    "gold": 12400,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -169,14 +169,14 @@
         "Pedang Kayu"
     ],
     "endless_state": {
-        "floor": 4,
+        "floor": 2,
         "party": [
             "Emperor",
             "Emperor",
             "Emperor"
         ],
         "equipments": [
-            "Tangan Kosong",
+            "Mahkota Raja Iblis",
             "Tangan Kosong",
             "Tangan Kosong"
         ]

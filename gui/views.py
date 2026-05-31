@@ -2217,19 +2217,23 @@ class EquipmentSelectionView(arcade.View):
 
 
 # ==========================================
-# 5. LAYAR GAME OVER (UPDATE HADIAH EXP)
+# LAYAR GAME OVER / KEMENANGAN (UPDATE: AAA UI & REFACTOR)
 # ==========================================
 class GameOverView(arcade.View):
     def __init__(self, winner_name: str, loser_name: str, winner_hp: int, is_player_win: bool, difficulty: str, player_types: list):
         super().__init__()
         
+        # Simpan History
+        from engine.save_manager import SaveManager # Pastikan import ini ada
         HistoryManager.save_match(winner_name, loser_name, winner_hp)
         
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        
+        # --- SETUP BACKGROUND ---
         self.bg_sprite_list = arcade.SpriteList()
         import os
-        bg_path = "assets/bg/game_over_bg.jpg" # Tinggal ganti nama file sesuai selera
+        bg_path = "assets/bg/game_over_bg.jpg" 
         if os.path.exists(bg_path):
             self.bg_sprite = arcade.Sprite(bg_path)
             self.bg_sprite.center_x = self.window.width / 2
@@ -2239,68 +2243,136 @@ class GameOverView(arcade.View):
             self.bg_sprite_list.append(self.bg_sprite)
         else:
             self.bg_sprite = None
-        self.v_box = arcade.gui.UIBoxLayout(space_between=20)
 
-        # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
-        # ==========================================
-        import os
+        # --- SETUP SFX ---
         click_path = "assets/sfx/click_game_over.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
         else:
             self.sfx_click = None
 
-        # Cek apakah pemain menang, lalu bagikan EXP
-        exp_text = ""
-        if is_player_win:
-            title_text = "🏆 TIM ANDA MENANG! 🏆"
-            title_color = arcade.color.LIGHT_GREEN
-            
+        # ==========================================
+        # LOGIKA PERHITUNGAN HADIAH (Hanya dihitung 1x saat Init)
+        # ==========================================
+        self.is_player_win = is_player_win
+        self.party_status = []
+        self.current_gold = SaveManager.get_gold()
+        self.total_exp = 0
+        self.gold_reward = 0
+
+        if self.is_player_win:
             party_size = len(player_types)
             base_exp = 50 if party_size == 1 else (75 if party_size == 2 else 100)
             multiplier = DIFFICULTY_SETTINGS[difficulty]["exp_mult"]
-            total_exp = int(base_exp * multiplier)
+            self.total_exp = int(base_exp * multiplier)
             
-            # --- PENAMBAHAN HADIAH GOLD ---
-            # Gold dikali jumlah karakter yang hidup/dibawa agar sepadan
-            gold_reward = DIFFICULTY_SETTINGS[difficulty]["gold_reward"] * party_size
-            current_gold = SaveManager.add_gold(gold_reward)
+            # Gold dikali jumlah karakter yang hidup/dibawa
+            self.gold_reward = DIFFICULTY_SETTINGS[difficulty]["gold_reward"] * party_size
+            self.current_gold = SaveManager.add_gold(self.gold_reward)
             
-            # Update teks antarmuka untuk menampilkan uang
-            exp_text = f"Memperoleh +{total_exp} EXP & 💰 {gold_reward} Gold!\nTotal Uang: {current_gold} Gold\n\n"
-            
+            # Tambah EXP ke setiap karakter
             for char_type in player_types:
-                new_lvl, leveled_up = SaveManager.add_exp(char_type, total_exp)
+                new_lvl, leveled_up = SaveManager.add_exp(char_type, self.total_exp)
                 if leveled_up:
-                    exp_text += f"⭐ {char_type} NAIK KE LEVEL {new_lvl}! ⭐\n"
+                    self.party_status.append(f"⭐ {char_type} NAIK KE LEVEL {new_lvl}! ⭐")
                 else:
-                    exp_text += f"✔️ {char_type} (Lv.{new_lvl})\n"
-        else:
-            title_text = "💀 TIM ANDA KALAH 💀"
-            title_color = arcade.color.CRIMSON
-            exp_text = "Game Over.\nTidak ada EXP maupun Gold yang diperoleh."
+                    self.party_status.append(f"✔️ {char_type} (Lv.{new_lvl})")
 
-        # RENDER UI
-        winner_label = arcade.gui.UILabel(text=title_text, text_color=title_color, font_size=30, bold=True)
-        exp_label = arcade.gui.UILabel(text=exp_text, text_color=arcade.color.YELLOW, font_size=16, multiline=True, width=500, align="center")
+        # Panggil pembuatan Antarmuka secara terpisah
+        self.build_ui()
+
+    # ==========================================
+    # RENDER UI: PANEL KACA GELAP
+    # ==========================================
+    def build_ui(self):
+        self.manager.clear()
+
+        # 1. Dimmer Background
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        # 2. Panel Kaca Utama
+        panel_width = 650
+        panel_height = 450
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 230))
+        panel_wrapper.add(child=panel_bg)
+
+        main_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
-        menu_button = arcade.gui.UIFlatButton(text="Kembali ke Menu", width=250)
-        menu_button.on_click = self.on_menu_click
+        # HEADER
+        title_text = "🏆 TIM ANDA MENANG! 🏆" if self.is_player_win else "💀 TIM ANDA GUGUR 💀"
+        title_color = arcade.color.GOLD if self.is_player_win else arcade.color.CRIMSON
+        main_box.add(arcade.gui.UILabel(text=title_text, font_size=32, bold=True, text_color=title_color))
+        main_box.add(arcade.gui.UILabel(text="", height=10))
 
-        self.v_box.add(winner_label)
-        self.v_box.add(exp_label)
-        self.v_box.add(menu_button)
+        if self.is_player_win:
+            # BOX HADIAH
+            reward_box = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+            reward_box.add(arcade.gui.UILabel(text="HADIAH PERTEMPURAN:", font_size=14, bold=True, text_color=arcade.color.CYAN))
+            reward_box.add(arcade.gui.UILabel(text=f"✨ +{self.total_exp} EXP   |   🪙 +{self.gold_reward} Gold", font_size=20, bold=True, text_color=arcade.color.LIGHT_GREEN))
+            reward_box.add(arcade.gui.UILabel(text=f"Total Saldo Anda: {self.current_gold} Gold", font_size=12, text_color=arcade.color.LIGHT_GRAY))
+            
+            main_box.add(reward_box)
+            main_box.add(arcade.gui.UILabel(text="", height=15))
 
-        anchor_layout = arcade.gui.UIAnchorLayout()
-        anchor_layout.add(child=self.v_box, anchor_x="center", anchor_y="center")
-        self.manager.add(anchor_layout)
+            # BOX STATUS KARAKTER
+            status_bg = arcade.gui.UISpace(width=550, height=140, color=(10, 15, 20, 180))
+            status_anchor = arcade.gui.UIAnchorLayout(width=550, height=140, size_hint=(None, None))
+            status_anchor.add(child=status_bg)
+            
+            status_box = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+            status_box.add(arcade.gui.UILabel(text="Laporan Pasukan:", font_size=12, text_color=arcade.color.WHITE))
+            
+            for status in self.party_status:
+                color = arcade.color.YELLOW if "⭐" in status else arcade.color.GOLD
+                status_box.add(arcade.gui.UILabel(text=status, font_size=14, text_color=color, bold=True))
+                
+            status_anchor.add(child=status_box, anchor_x="center", anchor_y="center")
+            main_box.add(status_anchor)
 
+        else:
+            # KETIKA KALAH
+            main_box.add(arcade.gui.UILabel(text="Game Over.", font_size=18, text_color=arcade.color.LIGHT_GRAY))
+            main_box.add(arcade.gui.UILabel(text="Tidak ada EXP maupun Gold yang diperoleh dari kekalahan.", font_size=14, text_color=arcade.color.GRAY))
+            main_box.add(arcade.gui.UILabel(text="", height=50))
+
+        main_box.add(arcade.gui.UILabel(text="", height=20))
+
+        # 3. TOMBOL KEMBALI
+        btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+        
+        btn_back = arcade.gui.UIFlatButton(text="Kembali ke Menu Utama", width=350, height=55, style=btn_style)
+        btn_back.on_click = self.on_menu_click
+        main_box.add(btn_back)
+
+        panel_wrapper.add(child=main_box, anchor_x="center", anchor_y="center")
+        
+        anchor = arcade.gui.UIAnchorLayout()
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
+        self.manager.add(anchor)
+
+    # ==========================================
+    # KONTROL & EVENT SYSTEM
+    # ==========================================
     def on_menu_click(self, event):
         if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
+            # Jika BGMManager.play_sfx ada di BGMManager Anda, panggil. 
+            # Jika tidak, ganti dengan arcade.play_sound(self.sfx_click)
+            try:
+                BGMManager.play_sfx(self.sfx_click)
+            except AttributeError:
+                arcade.play_sound(self.sfx_click, volume=0.5)
+                
         BGMManager.play("MENU")
         self.manager.disable()
+        from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
     def on_show_view(self):
@@ -3921,7 +3993,7 @@ class HistoryView(arcade.View):
             self.bg_sprite.height = height
 
 # ==========================================
-# 2. LAYAR REWARD ENDLESS (UPDATE: SCALING & SAVE)
+# 2. LAYAR REWARD ENDLESS (UPDATE: SCALING & SAVE FIX)
 # ==========================================
 class EndlessRewardView(arcade.View):
     def __init__(self, surviving_party, cleared_floor, player_types):
@@ -3929,12 +4001,14 @@ class EndlessRewardView(arcade.View):
         self.surviving_party = surviving_party
         self.cleared_floor = cleared_floor
         self.player_types = player_types
+        # Variabel hadiah asli Anda
         self.gold_reward = 100 * self.cleared_floor
+        
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self.bg_sprite_list = arcade.SpriteList()
         import os
-        bg_path = "assets/bg/game_over_endless_bg.jpg" # Tinggal ganti nama file sesuai selera
+        bg_path = "assets/bg/game_over_endless_bg.jpg" 
         if os.path.exists(bg_path):
             self.bg_sprite = arcade.Sprite(bg_path)
             self.bg_sprite.center_x = self.window.width / 2
@@ -3944,12 +4018,10 @@ class EndlessRewardView(arcade.View):
             self.bg_sprite_list.append(self.bg_sprite)
         else:
             self.bg_sprite = None
+            
         self.build_ui()
 
-        # ==========================================
-        # MUAT SFX KLIK UNTUK MENU INI
-        # ==========================================
-        import os
+        # MUAT SFX
         click_path = "assets/sfx/click_game_over.mp3"
         if os.path.exists(click_path):
             self.sfx_click = arcade.load_sound(click_path)
@@ -3958,46 +4030,95 @@ class EndlessRewardView(arcade.View):
 
     def build_ui(self):
         self.manager.clear()
+
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 210))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        panel_width = 550
+        panel_height = 420
+        panel_wrapper = arcade.gui.UIAnchorLayout(width=panel_width, height=panel_height, size_hint=(None, None))
+        panel_bg = arcade.gui.UISpace(width=panel_width, height=panel_height, color=(15, 20, 30, 240))
+        panel_wrapper.add(child=panel_bg)
+
         v_box = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
-        v_box.add(arcade.gui.UILabel(text=f"LANTAI {self.cleared_floor} DITAKLUKKAN!", font_size=32, bold=True, text_color=arcade.color.GOLD))
-        v_box.add(arcade.gui.UILabel(text=f"Hadiah Sementara: {self.gold_reward} Gold", font_size=18, text_color=arcade.color.YELLOW))
-        v_box.add(arcade.gui.UILabel(text="Jika Anda kalah di lantai berikutnya, semua hadiah hilang!", font_size=12, text_color=arcade.color.LIGHT_GRAY))
-        v_box.add(arcade.gui.UILabel(text="", height=10))
+        # MENGGUNAKAN VARIABEL ASLI DARI __init__
+        floor = self.cleared_floor
+        temp_gold = self.gold_reward
         
-        btn_next = arcade.gui.UIFlatButton(text=f"⚔️ Lanjut Lantai {self.cleared_floor + 1}", width=300, height=45)
-        btn_next.on_click = self.on_next_floor
+        v_box.add(arcade.gui.UILabel(text=f"🔥 LANTAI {floor} DITAKLUKKAN! 🔥", font_size=28, bold=True, text_color=arcade.color.GOLD))
         
-        btn_save = arcade.gui.UIFlatButton(text="💾 Simpan Progress & Keluar", width=300, height=45)
-        btn_save.on_click = self.on_save_quit
+        gold_box = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        gold_box.add(arcade.gui.UILabel(text="Hadiah Sementara Terkumpul:", font_size=14, text_color=arcade.color.WHITE))
+        gold_box.add(arcade.gui.UILabel(text=f"🪙 {temp_gold} Gold", font_size=32, bold=True, text_color=arcade.color.YELLOW))
+        v_box.add(gold_box)
         
-        btn_home = arcade.gui.UIFlatButton(text="💰 Ambil Gold & Pulang (Reset)", width=300, height=45)
-        btn_home.on_click = self.on_home
+        v_box.add(arcade.gui.UILabel(text="⚠️ PERINGATAN: Jika Anda mati di lantai berikutnya, semua hadiah ini HANGUS!", font_size=11, bold=True, text_color=arcade.color.RED))
+        v_box.add(arcade.gui.UILabel(text="", height=15))
+
+        continue_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 2}
+        }
         
-        v_box.add(btn_next)
+        take_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.GOLD, "border_color": arcade.color.WHITE, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.YELLOW, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GOLDENROD, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        save_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": (50, 60, 80, 255), "border_color": arcade.color.LIGHT_GRAY, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": (70, 80, 100, 255), "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.LIGHT_GRAY, "bg_color": (30, 40, 60, 255), "border_color": arcade.color.GRAY, "border_width": 2}
+        }
+
+        def create_btn(text, style, action_func):
+            btn = arcade.gui.UIFlatButton(text=text, width=400, height=50, style=style)
+            def action_wrapper(event):
+                # Putar SFX langsung (jika BGMManager.play_sfx tidak tersedia, fallback ke arcade.play_sound)
+                if hasattr(self, 'sfx_click') and self.sfx_click: 
+                    try:
+                        BGMManager.play_sfx(self.sfx_click)
+                    except NameError:
+                        arcade.play_sound(self.sfx_click, volume=0.5)
+                action_func(event)
+            btn.on_click = action_wrapper
+            return btn
+
+        # MENGHUBUNGKAN TOMBOL UI KE FUNGSI ASLI ANDA
+        btn_continue = create_btn("⚔️ Lanjut Tantang Lantai Berikutnya", continue_style, self.on_next_floor)
+        btn_save = create_btn("💾 Simpan Progress & Istirahat (Keluar)", save_style, self.on_save_quit)
+        btn_take = create_btn("💰 Ambil Semua Gold & Pulang (Reset)", take_style, self.on_home)
+
+        v_box.add(btn_continue)
         v_box.add(btn_save)
-        v_box.add(btn_home)
+        v_box.add(btn_take)
+
+        panel_wrapper.add(child=v_box, anchor_x="center", anchor_y="center")
         
         anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(child=v_box, anchor_x="center", anchor_y="center")
+        anchor.add(child=panel_wrapper, anchor_x="center", anchor_y="center")
         self.manager.add(anchor)
 
+    # ==========================================
+    # LOGIKA ASLI PERMAINAN ANDA
+    # ==========================================
     def on_next_floor(self, event):
         import random
         from engine.factory import CharacterFactory
         from models.equipment import Equipment
         from engine.gacha_system import GachaSystem
 
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-
         new_floor = self.cleared_floor + 1
         available_chars = ["Emperor", "Gladiator", "Assassin", "Mage", "Knight", "Valkyrie"]
         enemy_party = []
         
-        # SCALING SMOOTH: Level dan Status naik pelan-pelan tiap lantai
         enemy_level = max(1, new_floor // 2)
-        stat_mult = 1.0 + ((new_floor - 1) * 0.1) # Lantai 1=1.0x, Lantai 5=1.4x
+        stat_mult = 1.0 + ((new_floor - 1) * 0.1) 
         
         for i in range(3):
             char_type = random.choice(available_chars)
@@ -4006,7 +4127,6 @@ class EndlessRewardView(arcade.View):
                 char.apply_scaling(level=enemy_level, stat_multiplier=stat_mult)
             char.level = enemy_level
             
-            # KODE BARU (Scaling cerdas)
             random_eq = GachaSystem.get_enemy_equipment("Endless", new_floor)
             eq_data = GachaSystem.ITEM_POOL[random_eq]
             char = Equipment(char, random_eq, eq_data["bonus_atk"], eq_data["bonus_def"])
@@ -4020,16 +4140,11 @@ class EndlessRewardView(arcade.View):
     def on_save_quit(self, event):
         from engine.save_manager import SaveManager
         
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
-
         equipments = []
         for char in self.surviving_party:
-            # Tinggal baca label yang kita tempelkan tadi, jika tidak ada, beri "Tangan Kosong"
             eq_name = getattr(char, 'equipped_name', "Tangan Kosong")
             equipments.append(eq_name)
             
-        # Simpan nama karakter DAN equipment-nya
         SaveManager.save_endless_state(self.cleared_floor + 1, self.player_types, equipments)
         
         self.manager.disable()
@@ -4037,11 +4152,9 @@ class EndlessRewardView(arcade.View):
         self.window.show_view(MainMenuView())
 
     def on_home(self, event):
-        if hasattr(self, 'sfx_click') and self.sfx_click:
-            BGMManager.play_sfx(self.sfx_click)
         from engine.save_manager import SaveManager
         SaveManager.add_gold(self.gold_reward)
-        SaveManager.clear_endless_state() # Reset lantai ke 1
+        SaveManager.clear_endless_state() 
         
         self.manager.disable()
         from gui.views import MainMenuView
