@@ -1012,68 +1012,152 @@ class EquipmentSelectionView(arcade.View):
 
     def build_main_ui(self):
         self.manager.clear()
-        self.v_box = arcade.gui.UIBoxLayout(space_between=15)
 
-        # JUDUL: Perbesar dan buat sangat kontras
+        # ==========================================
+        # 1. JURUS DIMMER: Meredupkan Latar Belakang
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 180))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        self.v_box = arcade.gui.UIBoxLayout(space_between=20)
+
+        # JUDUL
         title = arcade.gui.UILabel(text="🛡️ PERSIAPAN EQUIPMENT ⚔️", text_color=arcade.color.GOLD, font_size=28, bold=True)
         self.v_box.add(title)
         
-        # SUB-JUDUL: Gunakan putih agar kontras
-        self.v_box.add(arcade.gui.UILabel(text="Klik tombol di samping nama untuk membuka daftar equipment", text_color=arcade.color.WHITE, font_size=14, bold=True))
+        self.v_box.add(arcade.gui.UILabel(text="Klik tombol equipment untuk mengganti perlengkapan karakter", text_color=arcade.color.LIGHT_GRAY, font_size=14, bold=True))
         self.v_box.add(arcade.gui.UILabel(text="", height=10))
 
         # ==========================================
-        # ALAT BANTU: Pemanggil Gambar Thumbnail
+        # ALAT BANTU: Pemanggil Gambar (Trik RGBA)
         # ==========================================
         def get_equip_thumbnail(equip_name):
             import os
+            from PIL import Image as PILImage
             
-            # 1. POTONG TEKS TAMBAHAN (Jika ada)
-            # Ini akan mengambil teks HANYA sampai sebelum tanda "(" atau "+"
-            # Jadi "Tombak Ksatria (+15 ATK)" akan menjadi "Tombak Ksatria"
             clean_name = equip_name.split('(')[0].split('+')[0].strip()
-            
-            # 2. RUMUS PENAMAAN OTOMATIS
             safe_name = clean_name.lower().replace(" ", "_")
             
-            # 3. ALAT DETEKTIF: Munculkan di terminal teks apa yang SEBENARNYA dicari program
-            print(f"🔍 INFO ITEM: Program sedang mencari file bernama -> 'assets/{safe_name}'")
-            
+            widget = None
             for ext in ['.png', '.jpg', '.jpeg']:
                 path = f"assets/{safe_name}{ext}"
                 if os.path.exists(path):
-                    sprite = arcade.Sprite(path)
-                    # Kunci tinggi gambar ikon di 50 pixel agar sejajar dengan tombol
-                    sprite.scale = 50 / sprite.texture.height
-                    return arcade.gui.UISpriteWidget(sprite=sprite)
+                    try:
+                        pil_img = PILImage.open(path).convert("RGBA")
+                        tex = arcade.Texture(name=path, image=pil_img)
+                        scaled_width = int(tex.width * (55 / tex.height))
+                        
+                        try:
+                            widget = arcade.gui.UIImage(texture=tex, width=scaled_width, height=55)
+                        except AttributeError:
+                            sprite = arcade.Sprite()
+                            sprite.texture = tex
+                            sprite.scale = 55 / tex.height
+                            widget = arcade.gui.UISpriteWidget(sprite=sprite, width=scaled_width, height=55)
+                            
+                        widget = widget.with_background(color=(0, 0, 0, 0))
+                        return widget
+                    except Exception as e:
+                        print(f"⚠️ Gagal load thumbnail {path}: {e}")
+                    break
             
-            # Jika gambar belum ada di folder assets, tampilkan kotak abu-abu sebagai cadangan
-            return arcade.gui.UISpace(width=50, height=50, color=arcade.color.DARK_GRAY)
+            if widget is None:
+                widget = arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
+            return widget
 
-        # DAFTAR KARAKTER
+        # ==========================================
+        # 2. WADAH KARTU DAFTAR
+        # ==========================================
+        list_bg_width = 650
+        list_bg_height = max(100, len(self.player_types) * 75 + 40)
+        
+        list_wrapper = arcade.gui.UIAnchorLayout(width=list_bg_width, height=list_bg_height, size_hint=(None, None))
+        list_bg = arcade.gui.UISpace(width=list_bg_width, height=list_bg_height, color=(15, 20, 30, 220))
+        list_wrapper.add(child=list_bg)
+        
+        list_content = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        
+        # Ambil GachaSystem untuk mengecek Rarity
+        from engine.gacha_system import GachaSystem
+
+        # DAFTAR KARAKTER DENGAN ZONASI PRESISI
         for i, char_type in enumerate(self.player_types):
-            row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-            
-            # 1. LABEL NAMA KARAKTER
-            lbl = arcade.gui.UILabel(text=f"{char_type}", width=150, font_size=16, bold=True, text_color=arcade.color.WHITE)
-            
+            row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
             current_item = self.equipped_items[i]
             
-            # 2. GAMBAR THUMBNAIL EQUIPMENT (Otomatis memanggil nama itemnya)
+            # --- ZONA 1: LABEL NAMA KARAKTER ---
+            # Dikunci di lebar 120px, teks diratakan ke KANAN agar selalu dekat dengan ikon
+            lbl_zone = arcade.gui.UIAnchorLayout(width=120, height=60, size_hint=(None, None))
+            lbl = arcade.gui.UILabel(text=f"{char_type}", font_size=17, bold=True, text_color=arcade.color.CYAN)
+            lbl_zone.add(child=lbl, anchor_x="right", anchor_y="center")
+            
+            # --- ZONA 2: IKON ---
+            icon_zone = arcade.gui.UIAnchorLayout(width=60, height=60, size_hint=(None, None))
+            icon_zone = icon_zone.with_background(color=(0,0,0,0))
             thumbnail = get_equip_thumbnail(current_item)
+            icon_zone.add(child=thumbnail, anchor_x="center", anchor_y="center")
             
-            # 3. TOMBOL EQUIPMENT (Lebar dikurangi sedikit agar muat dengan gambar)
-            btn = arcade.gui.UIFlatButton(text=current_item, width=290, height=50)
-            btn.on_click = self.make_open_picker_action(i)
+            # --- MENCARI WARNA BERDASARKAN RARITY ---
+            item_text_color = arcade.color.WHITE
+            if current_item != "Tangan Kosong":
+                item_data = GachaSystem.ITEM_POOL.get(current_item)
+                if item_data:
+                    rarity = item_data.get("rarity", "Common")
+                    if rarity == "Mythic": item_text_color = arcade.color.RED
+                    elif rarity == "Legendary": item_text_color = arcade.color.GOLD
+                    elif rarity == "Rare": item_text_color = arcade.color.LIGHT_BLUE
+
+            # --- ZONA 3: TOMBOL EQUIPMENT (WARNA DINAMIS) ---
+            # Setiap tombol sekarang memiliki warnanya sendiri berdasarkan rarity item!
+            rpg_btn_style = {
+                "normal": {"font_color": item_text_color, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+                "hover": {"font_color": item_text_color, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+                "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+            }
             
-            row.add(lbl)
-            row.add(thumbnail)
-            row.add(btn)
-            self.v_box.add(row)
+            btn_zone = arcade.gui.UIAnchorLayout(width=320, height=60, size_hint=(None, None))
+            btn = arcade.gui.UIFlatButton(text=current_item, width=320, height=55, style=rpg_btn_style)
+            
+            def create_open_action(index):
+                original_action = self.make_open_picker_action(index)
+                def wrapper(event):
+                    if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                    original_action(event)
+                return wrapper
+                
+            btn.on_click = create_open_action(i)
+            btn_zone.add(child=btn, anchor_x="center", anchor_y="center")
+            
+            # Masukkan zona-zona yang sudah presisi ke dalam baris
+            row.add(lbl_zone)
+            row.add(icon_zone)
+            row.add(btn_zone)
+            list_content.add(row)
+            
+        # Gabungkan daftar ke dalam alas kartu gelap
+        list_wrapper.add(child=list_content, anchor_x="center", anchor_y="center")
+        self.v_box.add(list_wrapper)
 
         self.v_box.add(arcade.gui.UILabel(text="", height=20))
-        start_btn = arcade.gui.UIFlatButton(text="🔥 Masuk ke Arena 🔥", width=380)
-        start_btn.on_click = self.on_start_battle
+        
+        # ==========================================
+        # 3. TOMBOL START PREMIUM
+        # ==========================================
+        ready_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+        
+        start_btn = arcade.gui.UIFlatButton(text="🔥 MASUK KE ARENA 🔥", width=400, height=60, style=ready_style)
+        
+        def on_start_sfx(event):
+            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            self.on_start_battle(event)
+            
+        start_btn.on_click = on_start_sfx
         self.v_box.add(start_btn)
 
         anchor = arcade.gui.UIAnchorLayout()
@@ -1138,30 +1222,49 @@ class EquipmentSelectionView(arcade.View):
             # Layer 3 (Paling Atas): Laci Utama Konten Kartu
             card_content = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
             
-            # --- ZONA 1: IKON ---
+           # --- ZONA 1: IKON ---
             icon_zone = arcade.gui.UIAnchorLayout(width=70, height=card_height, size_hint=(None, None))
+            icon_zone = icon_zone.with_background(color=(0, 0, 0, 0))
+
             clean_name = item_name.split('(')[0].split('+')[0].strip()
             safe_name = clean_name.lower().replace(" ", "_")
-            
-            tex = None
+
+            from PIL import Image as PILImage
+
+            icon_widget = None
             for ext in ['.png', '.jpg', '.jpeg']:
                 path = f"assets/{safe_name}{ext}"
                 if os.path.exists(path):
-                    tex = arcade.load_texture(path)
+                    try:
+                        pil_img = PILImage.open(path).convert("RGBA")
+                        tex = arcade.Texture(name=path, image=pil_img)
+                        
+                        scaled_width = int(tex.width * (55 / tex.height))
+                        
+                        try:
+                            icon_widget = arcade.gui.UIImage(
+                                texture=tex,
+                                width=scaled_width,
+                                height=55
+                            )
+                        except AttributeError:
+                            item_sprite = arcade.Sprite()
+                            item_sprite.texture = tex
+                            item_sprite.scale = 55 / tex.height
+                            icon_widget = arcade.gui.UISpriteWidget(
+                                sprite=item_sprite,
+                                width=scaled_width,
+                                height=55
+                            )
+                        
+                        icon_widget = icon_widget.with_background(color=(0, 0, 0, 0))
+                    except Exception as e:
+                        print(f"⚠️ Gagal load icon {path}: {e}")
                     break
 
-            if tex:
-                item_sprite = arcade.Sprite(tex)
-                item_sprite.scale = 55 / item_sprite.texture.height
-                icon_widget = arcade.gui.UISpriteWidget(
-                    sprite=item_sprite,
-                    width=55,
-                    height=55
-                )
-                icon_widget.with_background(color=(0, 0, 0, 0))
-            else:
+            if icon_widget is None:
                 icon_widget = arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
-            
+
             icon_zone.add(child=icon_widget, anchor_x="center", anchor_y="center")
             card_content.add(icon_zone)
             
@@ -2481,97 +2584,219 @@ class EndlessCharacterSelectionView(arcade.View):
     def build_ui(self):
         self.manager.clear()
         
-        # 1. PANEL KIRI: PEMILIHAN TIM PEMAIN
-        left_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
-        left_panel.add(arcade.gui.UILabel(text=f"TIM ENDLESS ANDA ({len(self.player_party)}/3)", font_size=18, bold=True, text_color=arcade.color.LIGHT_BLUE))
+        # Bersihkan sprite list lama (jika Anda masih memanggilnya di fungsi on_draw)
+        # Karena sekarang gambar karakternya akan dikendalikan 100% oleh UI Manager!
+        if hasattr(self, 'sprite_list'):
+            self.sprite_list.clear()
 
-        p_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=5)
-        p_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
-        p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        # ==========================================
+        # 1. JURUS DIMMER: Menggelapkan Background Kuil
+        # ==========================================
+        dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
+        dimmer_anchor = arcade.gui.UIAnchorLayout()
+        dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
+        self.manager.add(dimmer_anchor)
+
+        # ==========================================
+        # PERSIAPAN GAYA TOMBOL RPG (DICTIONARY)
+        # ==========================================
+        rpg_btn_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+        
+        cancel_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
+        }
+        
+        ready_style = {
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_GREEN, "border_color": arcade.color.LIME_GREEN, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.FOREST_GREEN, "border_color": arcade.color.GOLD, "border_width": 2},
+            "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.DARK_OLIVE_GREEN, "border_color": arcade.color.GOLD, "border_width": 3}
+        }
+
+        # ==========================================
+        # 2. PANEL KIRI: PEMILIHAN TIM (DENGAN KARTU)
+        # ==========================================
+        # Background kartu agar daftar tim lebih elegan
+        left_card_bg = arcade.gui.UISpace(width=280, height=450, color=(15, 20, 30, 220))
+        left_card_anchor = arcade.gui.UIAnchorLayout(width=280, height=450, size_hint=(None, None))
+        left_card_anchor.add(child=left_card_bg)
+        
+        left_content = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        left_content.add(arcade.gui.UILabel(text=f"🛡️ TIM ENDLESS ({len(self.player_party)}/3)", font_size=16, bold=True, text_color=arcade.color.GOLD))
+        left_content.add(arcade.gui.UILabel(text="", height=5))
+
+        p_grid = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+        p_col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+        p_col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
 
         for i, char in enumerate(self.available_characters):
-            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {self.element_map[char]}", width=80, height=40)
-            btn.on_click = self.make_select_action(char)
+            btn = arcade.gui.UIFlatButton(text=f"{char[:3].upper()} {self.element_map[char]}", width=110, height=45, style=rpg_btn_style)
+            
+            # Trik memasukkan SFX ke dalam aksi tombol otomatis
+            def create_click_action(char_name):
+                original_action = self.make_select_action(char_name)
+                def wrapper(event):
+                    if hasattr(self, 'sfx_click') and self.sfx_click:
+                        arcade.play_sound(self.sfx_click, volume=0.5)
+                    original_action(event)
+                return wrapper
+                
+            btn.on_click = create_click_action(char)
+            
             if i % 2 == 0: p_col1.add(btn)
             else: p_col2.add(btn)
             
         p_grid.add(p_col1)
         p_grid.add(p_col2)
-        left_panel.add(p_grid)
+        left_content.add(p_grid)
 
-        left_panel.add(arcade.gui.UILabel(text="", height=20))
+        left_content.add(arcade.gui.UILabel(text="", height=20))
         
         if self.player_party:
-            undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal Pilihan Terakhir", width=200, height=40)
-            undo_btn.on_click = self.on_undo
-            left_panel.add(undo_btn)
+            undo_btn = arcade.gui.UIFlatButton(text="↩️ Batal Pilihan", width=230, height=45, style=cancel_style)
+            def on_undo_sfx(event):
+                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                self.on_undo(event)
+            undo_btn.on_click = on_undo_sfx
+            left_content.add(undo_btn)
             
-        left_panel.add(arcade.gui.UILabel(text="", height=20))
+        left_content.add(arcade.gui.UILabel(text="", height=10))
         syn_name, syn_color = self.get_synergy(self.player_party)
-        left_panel.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=14, text_color=arcade.color.WHITE))
-        left_panel.add(arcade.gui.UILabel(text=syn_name, font_size=16, bold=True, text_color=syn_color))
+        left_content.add(arcade.gui.UILabel(text="Sinergi Aktif:", font_size=13, text_color=arcade.color.LIGHT_GRAY))
+        left_content.add(arcade.gui.UILabel(text=syn_name, font_size=15, bold=True, text_color=syn_color))
+
+        left_card_anchor.add(child=left_content, anchor_x="center", anchor_y="center")
 
         anchor_left = arcade.gui.UIAnchorLayout()
-        anchor_left.add(child=left_panel, anchor_x="left", anchor_y="center", align_x=40)
+        anchor_left.add(child=left_card_anchor, anchor_x="left", anchor_y="center", align_x=40)
         self.manager.add(anchor_left)
 
-        # 2. PANEL TENGAH: KONTROL
+        # ==========================================
+        # 3. PANEL TENGAH: KONTROL UTAMA
+        # ==========================================
         center_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=20)
-        title = arcade.gui.UILabel(text="ENDLESS TOWER", font_size=32, bold=True, text_color=arcade.color.CRIMSON)
+        title = arcade.gui.UILabel(text="ENDLESS TOWER", font_size=36, bold=True, text_color=arcade.color.CRIMSON)
         center_panel.add(title)
-        center_panel.add(arcade.gui.UILabel(text="Hadapi musuh tanpa batas!", font_size=14, text_color=arcade.color.LIGHT_GRAY))
-        center_panel.add(arcade.gui.UILabel(text="", height=20))
+        center_panel.add(arcade.gui.UILabel(text="Hadapi musuh tanpa batas!", font_size=16, text_color=arcade.color.LIGHT_GRAY))
+        center_panel.add(arcade.gui.UILabel(text="", height=40))
 
         if len(self.player_party) == 3:
-            ready_btn = arcade.gui.UIFlatButton(text="⚔️ MASUK KE MENARA", width=200, height=50)
-            ready_btn.on_click = self.on_ready
+            ready_btn = arcade.gui.UIFlatButton(text="⚔️ MASUK KE MENARA", width=250, height=60, style=ready_style)
+            def on_ready_sfx(event):
+                if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+                self.on_ready(event)
+            ready_btn.on_click = on_ready_sfx
             center_panel.add(ready_btn)
         else:
-            center_panel.add(arcade.gui.UIFlatButton(text="Pilih 3 Karakter...", width=200, height=50))
+            dummy_btn = arcade.gui.UIFlatButton(text="Pilih 3 Karakter...", width=250, height=60, style=rpg_btn_style)
+            center_panel.add(dummy_btn)
 
-        back_btn = arcade.gui.UIFlatButton(text="Kembali", width=200)
-        back_btn.on_click = self.on_back_click
+        back_btn = arcade.gui.UIFlatButton(text="❌ Kembali", width=250, height=50, style=cancel_style)
+        def on_back_sfx(event):
+            if hasattr(self, 'sfx_click') and self.sfx_click: arcade.play_sound(self.sfx_click, volume=0.5)
+            self.on_back_click(event)
+        back_btn.on_click = on_back_sfx
         center_panel.add(back_btn)
 
         anchor_center = arcade.gui.UIAnchorLayout()
         anchor_center.add(child=center_panel, anchor_x="center", anchor_y="center")
         self.manager.add(anchor_center)
 
-        # 3. PANEL KANAN: INFO DETAIL
-        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+        # ==========================================
+        # 4. PANEL KANAN: PREVIEW KARAKTER RAKSASA (FIXED)
+        # ==========================================
+        # Kita menggunakan space_between=0 agar gambar karakter "berdiri" tepat di atas kotak infonya
+        right_panel = arcade.gui.UIBoxLayout(vertical=True, space_between=0)
+        
         if self.last_player_char:
             info = self.char_info[self.last_player_char]
-            right_panel.add(arcade.gui.UILabel(text=f"{self.element_map[self.last_player_char]} {self.last_player_char}", font_size=24, bold=True, text_color=arcade.color.GOLD))
-            right_panel.add(arcade.gui.UILabel(text=f"Role: {info['role']}", font_size=14, text_color=arcade.color.WHITE))
-            right_panel.add(arcade.gui.UILabel(text=f"Stats: {info['stats']}", font_size=12, text_color=arcade.color.LIGHT_GRAY))
-            right_panel.add(arcade.gui.UILabel(text="", height=10))
+            import os
             
-            desc_text = f"🌟 Pasif:\n{info['passive']}\n\n🔥 Ultimate:\n{info['ulti']}"
-            right_panel.add(arcade.gui.UILabel(text=desc_text, font_size=12, text_color=arcade.color.WHITE, multiline=True, width=300))
-            
-            # ==========================================
-            # FIX: CARI GAMBAR KHUSUS MENU (akhiran _menu)
-            # ==========================================
+            # --- ZONA FOTO KARAKTER (DENGAN PAWANG SKALA) ---
             def find_menu_image(name):
                 for ext in ['.png', '.jpg', '.jpeg']:
                     path = f"assets/{name.lower()}_menu{ext}"
-                    if os.path.exists(path):
-                        return path
+                    if os.path.exists(path): return path
                 return None
 
             menu_path = find_menu_image(self.last_player_char)
-            
+            # ZONA FOTO KARAKTER — GANTI SELURUH BLOK INI
+            menu_path = find_menu_image(self.last_player_char)
             if menu_path:
-                # Menampilkan potret/gambar khusus menu
-                self.preview_sprite = arcade.Sprite(menu_path, scale=0.8) # Sesuaikan scale menu jika perlu
-            else:
-                self.preview_sprite = arcade.SpriteSolidColor(width=250, height=350, color=arcade.color.CRIMSON)
+                from PIL import Image as PILImage
                 
-            self.sprite_list.clear()
-            self.sprite_list.append(self.preview_sprite)
+                pil_img = PILImage.open(menu_path).convert("RGBA")
+                tex = arcade.Texture(name=menu_path, image=pil_img)
+                
+                scaled_height = 450
+                scaled_width = int(tex.width * (scaled_height / tex.height))
+                
+                # Coba pakai UIImage (ada di beberapa versi Arcade)
+                try:
+                    img_widget = arcade.gui.UIImage(
+                        texture=tex,
+                        width=scaled_width,
+                        height=scaled_height
+                    )
+                except AttributeError:
+                    # Fallback ke UISpriteWidget
+                    preview_sprite = arcade.Sprite()
+                    preview_sprite.texture = tex
+                    preview_sprite.scale = scaled_height / tex.height
+                    img_widget = arcade.gui.UISpriteWidget(
+                        sprite=preview_sprite,
+                        width=scaled_width,
+                        height=scaled_height
+                    )
+                
+                img_widget = img_widget.with_background(color=(0, 0, 0, 0))
+                
+                img_anchor = arcade.gui.UIAnchorLayout(
+                    width=350, height=450, size_hint=(None, None)
+                )
+                img_anchor = img_anchor.with_background(color=(0, 0, 0, 0))
+                img_anchor.add(child=img_widget, anchor_x="center", anchor_y="bottom")
+                
+                right_panel.add(img_anchor)
+            else:
+                right_panel.add(arcade.gui.UISpace(width=350, height=450, color=(0, 0, 0, 0)))
 
+            # --- ZONA KOTAK INFO DETAIL ---
+            info_width = 350
+            info_height = 180
+            info_card_anchor = arcade.gui.UIAnchorLayout(width=info_width, height=info_height, size_hint=(None, None))
+            
+            # Latar Belakang Kartu Info (Gelap Transparan)
+            info_bg = arcade.gui.UISpace(width=info_width, height=info_height, color=(15, 20, 30, 230))
+            info_card_anchor.add(child=info_bg)
+            
+            info_content = arcade.gui.UIBoxLayout(vertical=True, space_between=5)
+            
+            # Header Teks Info
+            header_row = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+            header_row.add(arcade.gui.UILabel(text=f"{self.element_map[self.last_player_char]}", font_size=24))
+            header_row.add(arcade.gui.UILabel(text=f"{self.last_player_char}", font_size=22, bold=True, text_color=arcade.color.GOLD))
+            info_content.add(header_row)
+            
+            # Sub-header Stats
+            info_content.add(arcade.gui.UILabel(text=f"Role: {info['role']} | Stats: {info['stats']}", font_size=12, text_color=arcade.color.LIGHT_GRAY))
+            info_content.add(arcade.gui.UILabel(text="", height=10))
+            
+            # Deskripsi Pasif & Ulti
+            desc_text = f"🌟 Pasif:\n{info['passive']}\n\n🔥 Ultimate:\n{info['ulti']}"
+            info_content.add(arcade.gui.UILabel(text=desc_text, font_size=11, text_color=arcade.color.WHITE, multiline=True, width=320))
+            
+            info_card_anchor.add(child=info_content, anchor_x="center", anchor_y="center")
+            right_panel.add(info_card_anchor)
+
+        # Menempelkan panel kanan ke layar (Rata Kanan)
         anchor_right = arcade.gui.UIAnchorLayout()
-        anchor_right.add(child=right_panel, anchor_x="right", anchor_y="bottom", align_x=-40, align_y=40)
+        anchor_right.add(child=right_panel, anchor_x="right", anchor_y="center", align_x=-40)
         self.manager.add(anchor_right)
 
     def make_select_action(self, char_name):
