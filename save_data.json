@@ -25,7 +25,7 @@
             "exp": 200
         }
     },
-    "gold": 12550,
+    "gold": 12150,
     "inventory": [
         "Tombak Ksatria",
         "Pedang Kayu",
@@ -166,10 +166,14 @@
         "Pedang Kayu",
         "Zirah Kain",
         "Zirah Kain",
-        "Pedang Kayu"
+        "Pedang Kayu",
+        "Zirah Kain",
+        "Zirah Kain",
+        "Pedang Kayu",
+        "Tombak Ksatria"
     ],
     "endless_state": {
-        "floor": 3,
+        "floor": 4,
         "party": [
             "Emperor",
             "Emperor",

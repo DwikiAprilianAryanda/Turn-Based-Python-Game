@@ -1088,7 +1088,7 @@ class GachaView(arcade.View):
 
     def on_back_click(self, event):
         if hasattr(self, 'sfx_click2') and self.sfx_click2:
-            BGMManager.play_sfx(self.sfx_click)
+            BGMManager.play_sfx(self.sfx_click2)
         from gui.views import MainMenuView
         self.window.show_view(MainMenuView())
 
