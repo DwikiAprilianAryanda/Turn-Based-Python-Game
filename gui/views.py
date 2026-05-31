@@ -1094,37 +1094,52 @@ class EquipmentSelectionView(arcade.View):
         self.manager.clear()
         
         # ==========================================
-        # 1. JURUS DIMMER: Menggelapkan Background
+        # 1. DIMMER LAYAR UTAMA
         # ==========================================
         dimmer = arcade.gui.UISpace(width=self.window.width, height=self.window.height, color=(10, 15, 20, 200))
         dimmer_anchor = arcade.gui.UIAnchorLayout()
         dimmer_anchor.add(child=dimmer, anchor_x="center", anchor_y="center")
         self.manager.add(dimmer_anchor)
         
-        # ==========================================
-        # WADAH UTAMA KARTU
-        # ==========================================
-        main_window = arcade.gui.UIBoxLayout(vertical=True, space_between=30)
+        main_window = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
         
         title_text = f"✨ PERLENGKAPAN : {self.player_types[char_idx].upper()} ✨"
-        main_window.add(arcade.gui.UILabel(text=title_text, font_size=22, text_color=arcade.color.GOLD, bold=True))
+        main_window.add(arcade.gui.UILabel(text=title_text, font_size=24, text_color=arcade.color.GOLD, bold=True))
 
         from engine.gacha_system import GachaSystem
         import os
         
-        grid_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=50)
-        col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
-        col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=25)
+        grid_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=40)
+        col1 = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
+        col2 = arcade.gui.UIBoxLayout(vertical=True, space_between=15)
         
         valid_items = [(name, count) for name, count in self.inventory_counts.items() if count > 0 or name == "Tangan Kosong"]
             
         for i, (item_name, count) in enumerate(valid_items):
             item_data = GachaSystem.ITEM_POOL.get(item_name) if item_name != "Tangan Kosong" else None
             
-            # Kartu per Item (Horizontal)
-            card = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+            # ==========================================
+            # 2. PEMBUATAN KARTU (ANTI HOVER-BUG!)
+            # ==========================================
+            card_width = 440
+            card_height = 85
             
-            # --- BAGIAN 1: IKON ---
+            card_wrapper = arcade.gui.UIAnchorLayout(width=card_width, height=card_height, size_hint=(None, None))
+            
+            # --- TRIK BARU: BORDER PALSU DENGAN UISpace ---
+            # Layer 1 (Paling Bawah): Kotak luar warna terang sebagai "Border"
+            border_bg = arcade.gui.UISpace(width=card_width, height=card_height, color=(60, 80, 110))
+            card_wrapper.add(child=border_bg, anchor_x="center", anchor_y="center")
+            
+            # Layer 2 (Tengah): Kotak dalam warna gelap (Ukuran dikurangi 4px)
+            inner_bg = arcade.gui.UISpace(width=card_width-4, height=card_height-4, color=(20, 25, 40))
+            card_wrapper.add(child=inner_bg, anchor_x="center", anchor_y="center")
+            
+            # Layer 3 (Paling Atas): Laci Utama Konten Kartu
+            card_content = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+            
+            # --- ZONA 1: IKON ---
+            icon_zone = arcade.gui.UIAnchorLayout(width=70, height=card_height, size_hint=(None, None))
             clean_name = item_name.split('(')[0].split('+')[0].strip()
             safe_name = clean_name.lower().replace(" ", "_")
             
@@ -1137,19 +1152,27 @@ class EquipmentSelectionView(arcade.View):
 
             if tex:
                 item_sprite = arcade.Sprite(tex)
-                item_sprite.scale = 60 / item_sprite.texture.height
-                icon_widget = arcade.gui.UISpriteWidget(sprite=item_sprite)
+                item_sprite.scale = 55 / item_sprite.texture.height
+                icon_widget = arcade.gui.UISpriteWidget(
+                    sprite=item_sprite,
+                    width=55,
+                    height=55
+                )
+                icon_widget.with_background(color=(0, 0, 0, 0))
             else:
-                icon_widget = arcade.gui.UISpace(width=60, height=60, color=arcade.color.DARK_GRAY)
-            card.add(icon_widget)
+                icon_widget = arcade.gui.UISpace(width=55, height=55, color=(30, 35, 50))
             
-            # --- BAGIAN 2: TEKS ---
+            icon_zone.add(child=icon_widget, anchor_x="center", anchor_y="center")
+            card_content.add(icon_zone)
+            
+            # --- ZONA 2: TEKS ---
+            text_zone = arcade.gui.UIAnchorLayout(width=230, height=card_height, size_hint=(None, None))
             info_box = arcade.gui.UIBoxLayout(vertical=True)
-            info_box.add(arcade.gui.UISpace(height=5)) 
+            info_box.add(arcade.gui.UISpace(height=8)) 
             
             if item_name == "Tangan Kosong":
-                info_box.add(arcade.gui.UILabel(text="Tangan Kosong", font_size=15, text_color=arcade.color.WHITE, bold=True, width=240))
-                info_box.add(arcade.gui.UILabel(text="Lepaskan perlengkapan saat ini", font_size=12, text_color=arcade.color.GRAY, width=240))
+                info_box.add(arcade.gui.UILabel(text="Tangan Kosong", font_size=15, text_color=arcade.color.WHITE, bold=True, width=230))
+                info_box.add(arcade.gui.UILabel(text="Lepaskan perlengkapan", font_size=11, text_color=arcade.color.GRAY, width=230, multiline=True))
             else:
                 rarity = item_data.get("rarity", "Common")
                 color = arcade.color.WHITE
@@ -1157,74 +1180,50 @@ class EquipmentSelectionView(arcade.View):
                 elif rarity == "Legendary": color = arcade.color.GOLD
                 elif rarity == "Rare": color = arcade.color.LIGHT_BLUE
                 
-                info_box.add(arcade.gui.UILabel(text=f"{item_name}", font_size=15, text_color=color, bold=True, width=240))
-                
+                info_box.add(arcade.gui.UILabel(text=f"{item_name}", font_size=15, text_color=color, bold=True, width=230))
                 desc = item_data.get("desc", "Tanpa efek")
-                if len(desc) > 35: desc = desc[:32] + "..."
-                info_box.add(arcade.gui.UILabel(text=desc, font_size=12, text_color=arcade.color.LIGHT_GREEN, width=240))
+                info_box.add(arcade.gui.UILabel(text=desc, font_size=11, text_color=arcade.color.LIGHT_GREEN, width=230, multiline=True))
             
-            card.add(info_box)
+            text_zone.add(child=info_box, anchor_x="left", anchor_y="center")
+            card_content.add(text_zone)
             
-            # --- BAGIAN 3: TOMBOL RPG STYLE (FIXED DICTIONARY) ---
+            # --- ZONA 3: TOMBOL PAKAI (TETAP INTERAKTIF) ---
+            btn_zone = arcade.gui.UIAnchorLayout(width=100, height=card_height, size_hint=(None, None))
             btn_text = "Lepas" if item_name == "Tangan Kosong" else f"Pakai ({count})"
             
             rpg_button_style = {
-                "normal": {
-                    "font_color": arcade.color.WHITE,
-                    "bg_color": arcade.color.DARK_SLATE_BLUE,
-                    "border_color": arcade.color.CYAN,
-                    "border_width": 2,
-                },
-                "hover": {
-                    "font_color": arcade.color.WHITE,
-                    "bg_color": arcade.color.ROYAL_BLUE,
-                    "border_color": arcade.color.GOLD,
-                    "border_width": 2,
-                },
-                "press": {
-                    "font_color": arcade.color.GOLD,
-                    "bg_color": arcade.color.MIDNIGHT_BLUE,
-                    "border_color": arcade.color.GOLD,
-                    "border_width": 3,
-                }
+                "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_SLATE_BLUE, "border_color": arcade.color.CYAN, "border_width": 2},
+                "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.ROYAL_BLUE, "border_color": arcade.color.GOLD, "border_width": 2},
+                "press": {"font_color": arcade.color.GOLD, "bg_color": arcade.color.MIDNIGHT_BLUE, "border_color": arcade.color.GOLD, "border_width": 3}
             }
             
-            btn = arcade.gui.UIFlatButton(text=btn_text, width=90, height=50, style=rpg_button_style)
+            btn = arcade.gui.UIFlatButton(text=btn_text, width=90, height=45, style=rpg_button_style)
             btn.on_click = self.make_select_item_action(char_idx, item_name)
-            card.add(btn) # Langsung ditambahkan tanpa UIAnchorLayout yang rawan kolaps
             
-            # Distribusi ke kolom
+            btn_zone.add(child=btn, anchor_x="center", anchor_y="center")
+            card_content.add(btn_zone)
+            
+            # Tempel Konten (Layer 3) ke Wadah Utama
+            card_wrapper.add(child=card_content, anchor_x="center", anchor_y="center")
+            
             if i % 2 == 0:
-                col1.add(card)
+                col1.add(card_wrapper)
             else:
-                col2.add(card)
+                col2.add(card_wrapper)
                 
         grid_layout.add(col1)
         grid_layout.add(col2)
         main_window.add(grid_layout)
         
-        main_window.add(arcade.gui.UILabel(text="", height=20))
+        main_window.add(arcade.gui.UILabel(text="", height=10))
         
-        # TOMBOL BATAL (FIXED DICTIONARY)
+        # ==========================================
+        # 3. TOMBOL BATAL BAWAH
+        # ==========================================
         cancel_style = {
-            "normal": {
-                "font_color": arcade.color.WHITE, 
-                "bg_color": arcade.color.CRIMSON, 
-                "border_color": arcade.color.DARK_RED, 
-                "border_width": 2
-            },
-            "hover": {
-                "font_color": arcade.color.WHITE, 
-                "bg_color": arcade.color.RED, 
-                "border_color": arcade.color.WHITE, 
-                "border_width": 2
-            },
-            "press": {
-                "font_color": arcade.color.WHITE, 
-                "bg_color": arcade.color.DARK_RED, 
-                "border_color": arcade.color.WHITE, 
-                "border_width": 2
-            }
+            "normal": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.CRIMSON, "border_color": arcade.color.DARK_RED, "border_width": 2},
+            "hover": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.RED, "border_color": arcade.color.WHITE, "border_width": 2},
+            "press": {"font_color": arcade.color.WHITE, "bg_color": arcade.color.DARK_RED, "border_color": arcade.color.WHITE, "border_width": 2}
         }
         back_btn = arcade.gui.UIFlatButton(text="❌ BATAL & KEMBALI", width=300, height=50, style=cancel_style)
         
